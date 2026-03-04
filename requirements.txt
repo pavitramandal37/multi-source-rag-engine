@@ -4,3 +4,4 @@ pgvector>=0.3.2
 djangorestframework>=3.15
 python-dotenv>=1.0
 requests>=2.32
+sentence-transformers>=3.0

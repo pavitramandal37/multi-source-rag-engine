@@ -78,10 +78,10 @@ Before you run the project, make sure you have:
 
 ## Configuration
 
-All configuration is done through environment variables. Start by creating your `.env` file:
+All configuration is done through environment variables. Start by creating your `.env` file in the project root:
 
 ```bash
-cd "d:\My Apps\RAG AI Chatbot\API Support"
+cd "d:\My Apps\RAG AI Chatbot\api-support-ai-chatbot"
 copy env.example .env
 ```
 
@@ -95,7 +95,7 @@ Open `.env` and set at least:
   - `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT`.
   - Defaults are fine when using `docker-compose.yml` as-is.
 - **LLM / OpenAI-compatible API**:
-  - `LLM_API_KEY` – your API key.
+  - `LLM_API_KEY` – your API key (for example, the OpenAI key you shared; paste it into `.env` but never commit this file).
   - `LLM_API_BASE_URL` – typically `https://api.openai.com/v1` or your provider’s base URL.
   - `LLM_MODEL_NAME` – e.g. `gpt-4.1-mini`.
   - `EMBEDDING_MODEL_NAME` – e.g. `text-embedding-3-small`.
@@ -106,7 +106,7 @@ Open `.env` and set at least:
 
 ### 1. Build the images
 
-From the project root (`d:\My Apps\RAG AI Chatbot\API Support`):
+From the project root (`d:\My Apps\RAG AI Chatbot\api-support-ai-chatbot`):
 
 ```bash
 docker-compose build
@@ -308,7 +308,7 @@ You can also run the project directly on your host if you prefer:
 1. Create and activate a virtual environment:
 
 ```bash
-cd "d:\My Apps\RAG AI Chatbot\API Support"
+cd "d:\My Apps\RAG AI Chatbot\api-support-ai-chatbot"
 python -m venv .venv
 .venv\Scripts\activate
 ```
