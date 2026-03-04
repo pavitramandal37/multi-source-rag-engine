@@ -16,7 +16,7 @@ class DocumentChunk(models.Model):
     chunk_index = models.PositiveIntegerField()
     content = models.TextField()
     metadata = models.JSONField(default=dict, blank=True)
-    embedding = VectorField(dimensions=1536)
+    embedding = VectorField(dimensions=768)
 
     created_at = models.DateTimeField(auto_now_add=True)
 

@@ -6,7 +6,7 @@ This project is a **Retrieval-Augmented Generation (RAG) API Support Chatbot** b
 
 - **Django + Django REST Framework** for the HTTP API.
 - **PostgreSQL + pgvector** as the vector database for semantic search.
-- A **cloud LLM** (OpenAI-compatible API) for embeddings and answer generation.
+- A **local or cloud LLM** exposed via an OpenAI-compatible HTTP API (Ollama by default in this setup).
 - **Docker + docker-compose** for local development and deployment.
 
 The chatbot is designed to help users who struggle to use APIs correctly. You ingest your **API documentation, examples, and FAQs**, and then ask questions such as:
@@ -28,9 +28,54 @@ The app retrieves the most relevant documentation snippets and uses an LLM to ge
 - **Vector search** using PostgreSQL + pgvector.
 - **Conversation tracking** (conversation IDs and message history).
 - **Dockerized stack**: one command to start app + database.
-- **Configurable LLM provider** via environment variables (OpenAI-compatible).
+- **Configurable LLM provider** via environment variables (local Ollama or any OpenAI-compatible cloud API).
 
 For a deeper architectural explanation, see `ARCHITECTURE.md`.
+
+---
+
+## Interview-Ready Explanation — How This Chatbot Works
+
+- **Problem it solves**: Developers and support engineers often struggle to use complex APIs correctly. They jump between docs, examples, and tickets to answer questions like “How do I authenticate?”, “Why am I getting 401?”, or “What does this error code mean?”. This chatbot centralizes that knowledge and answers those questions conversationally.
+
+- **High-level idea**: It is a **RAG (Retrieval-Augmented Generation) system**. Instead of letting the LLM “hallucinate”, it:
+  - Stores your API docs as **semantic embeddings** in **PostgreSQL + pgvector**.
+  - For each question, retrieves the most relevant chunks.
+  - Builds a context-rich prompt and asks the LLM to answer strictly based on that context.
+
+- **Main components (backend only)**:
+  - **Django REST API** exposes:
+    - `POST /api/docs/ingest/` – ingest raw API docs (titles + content).
+    - `POST /api/chat/` – ask questions and get answers plus citations.
+  - **Vector store (PostgreSQL + pgvector)** stores:
+    - `Document` and `DocumentChunk` rows.
+    - A `VectorField` embedding for each chunk so we can do similarity search.
+  - **LLM layer (LLMClient + EmbeddingService)**:
+    - Talks to an OpenAI-compatible API (Ollama by default) for chat completions and (optionally) embeddings.
+  - **RAG pipeline**:
+    - Computes embeddings for queries, retrieves the top-k relevant chunks, builds the prompt, calls the LLM, and returns the final answer and sources.
+
+- **Document ingestion flow (interview summary)**:
+  1. You send docs either via `POST /api/docs/ingest/` or the `ingest_docs` management command.
+  2. The service splits long docs into smaller **chunks**.
+  3. Each chunk is turned into an **embedding vector**.
+  4. Chunks + embeddings are stored in Postgres with pgvector, ready for similarity search.
+
+- **Question answering flow (interview summary)**:
+  1. Client calls `POST /api/chat/` with a natural-language question.
+  2. The question is embedded and used to **search similar chunks** in the vector store.
+  3. Retrieved chunks are compiled into a **context section** plus the user’s question.
+  4. That prompt is sent to the LLM (Ollama / OpenAI-style API).
+  5. The chatbot returns:
+     - A natural-language **answer** grounded in the docs.
+     - **Sources**: which document titles and snippets were used.
+     - A `conversation_id` so follow-up questions keep context.
+
+- **Why this design is production-friendly**:
+  - Clear separation of concerns (Django views, services, vector store, LLM client).
+  - Swappable LLM provider (just change env vars; Ollama or any OpenAI-compatible endpoint).
+  - Uses standard infrastructure (PostgreSQL + pgvector) instead of a proprietary vector DB.
+  - Exposes a clean REST API that any UI (web, desktop, Postman, support tools) can call.
 
 ---
 
@@ -38,8 +83,12 @@ For a deeper architectural explanation, see `ARCHITECTURE.md`.
 
 - **Backend**: Django 5, Django REST Framework.
 - **Database**: PostgreSQL 16 + `pgvector`.
-- **Vector embeddings**: Cloud LLM embeddings endpoint.
-- **LLM**: OpenAI-compatible chat completions API.
+- **Vector embeddings**:
+  - Local `sentence-transformers` model (e.g. `BAAI/bge-small-en`) when `EMBEDDING_BACKEND=local`.
+  - Or a cloud embeddings endpoint via OpenAI-compatible API.
+- **LLM**:
+  - OpenAI-compatible chat completions API.
+  - In this repo’s default setup, that endpoint is provided by **Ollama** running locally.
 - **Containerization**: Docker, docker-compose.
 - **Language**: Python 3.11.
 
@@ -62,93 +111,188 @@ At the top level:
 
 ---
 
-## Prerequisites
+## Prerequisites (Local Ollama Setup)
 
-Before you run the project, make sure you have:
+Before you run the project in the **Ollama-based Docker setup**, make sure you have:
 
 - **Docker Desktop** installed and running on your machine (Windows 10+).
 - **Docker Compose** (included with modern Docker Desktop).
-- A valid **LLM API key** (for an OpenAI-compatible API), for example:
-  - OpenAI account with an API key.
-  - Or a compatible proxy/host that exposes `chat/completions` and `embeddings` endpoints.
+- **Ollama** installed and running on your host machine.
+- (Optional) **Postman** or a similar API client (used below in the examples).
 
-> Note: You mentioned PostgreSQL is already installed on your system. This project uses a **Dockerized PostgreSQL** by default (with pgvector extension via Python library). You don’t need to configure your local PostgreSQL unless you specifically want to connect to it instead of the container.
+> Note: PostgreSQL runs inside Docker via `docker-compose.yml` (with `pgvector` available through the Python library). You do **not** need a separate local PostgreSQL instance for this setup.
 
 ---
 
-## Configuration
+## Configuration (.env) for This Project
 
-All configuration is done through environment variables. Start by creating your `.env` file:
+All configuration is done through environment variables. Start by creating your `.env` file in the project root:
 
 ```bash
-cd "d:\My Apps\RAG AI Chatbot\API Support"
+cd "d:\My Apps\RAG AI Chatbot\api-support-ai-chatbot"
 copy env.example .env
 ```
 
 Open `.env` and set at least:
 
 - **Django**:
-  - `DJANGO_SECRET_KEY` – set to a random string in production.
-  - `DJANGO_DEBUG` – `true` for local development; `false` in production.
-  - `DJANGO_ALLOWED_HOSTS` – comma-separated hostnames (for dev, `localhost,127.0.0.1` is fine).
-- **Database**:
-  - `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT`.
-  - Defaults are fine when using `docker-compose.yml` as-is.
-- **LLM / OpenAI-compatible API**:
-  - `LLM_API_KEY` – your API key.
-  - `LLM_API_BASE_URL` – typically `https://api.openai.com/v1` or your provider’s base URL.
-  - `LLM_MODEL_NAME` – e.g. `gpt-4.1-mini`.
-  - `EMBEDDING_MODEL_NAME` – e.g. `text-embedding-3-small`.
+  - `DJANGO_SECRET_KEY=your-generated-secret-key`
+  - `DJANGO_DEBUG=true`
+  - `DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1`
+- **Database** (matching `docker-compose.yml`):
+  - `DB_NAME=rag_support`
+  - `DB_USER=rag_user`
+  - `DB_PASSWORD=rag_password`
+  - `DB_HOST=db`
+  - `DB_PORT=5432`
+- **LLM / Embeddings (Ollama + local embeddings)**:
+  - `LLM_API_KEY=ollama` (placeholder; Ollama itself does not require a key).
+  - `LLM_API_BASE_URL=http://host.docker.internal:11434/v1`
+  - `LLM_MODEL_NAME=llama3.2:1b`
+  - `EMBEDDING_MODEL_NAME=BAAI/bge-small-en`
+  - `EMBEDDING_BACKEND=local`
+
+> **Alternative cloud LLM mode**: If you want to use a cloud provider instead of Ollama, change `LLM_API_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL_NAME`, and `EMBEDDING_MODEL_NAME` to your provider’s values (for example, OpenAI or an OpenAI-compatible proxy). The rest of the architecture stays the same.
 
 ---
 
-## Running the Project with Docker (Recommended)
+## RAG AI Chatbot — Run Guide
 
-### 1. Build the images
+### Scenario 1 — Running for the First Time (Fresh Setup)
 
-From the project root (`d:\My Apps\RAG AI Chatbot\API Support`):
+**Prerequisites**
 
-```bash
-docker-compose build
-```
+- Docker Desktop installed and running.
+- Ollama installed and running.
+- Project folder: `D:\My Apps\RAG AI Chatbot\api-support-ai-chatbot`.
 
-This will:
-
-- Build the `web` image using the `Dockerfile` (installs Python dependencies).
-- Pull the `postgres:16` image for the `db` service.
-
-### 2. Start the services
+**Step 1 — Pull Ollama models** (run in any terminal on your host):
 
 ```bash
-docker-compose up
+ollama pull llama3.2:1b
+ollama pull nomic-embed-text
 ```
 
-This will:
+**Step 2 — Set up `.env` file**
 
-- Start the `db` service (PostgreSQL).
-- Start the `web` service (Django) on port `8000`.
+Copy `env.example` to `.env` and fill in the values listed in the **Configuration** section above.
 
-You should see Django starting up in the logs. Once it is ready, the API will be accessible at:
+**Step 3 — Build and start containers**
 
-- `http://localhost:8000/`
-- Chat endpoint: `http://localhost:8000/api/chat/`
-- Ingestion endpoint: `http://localhost:8000/api/docs/ingest/`
+From the project folder terminal:
 
-### 3. Apply migrations
+```bash
+cd "D:\My Apps\RAG AI Chatbot\api-support-ai-chatbot"
+docker-compose up --build -d
+```
 
-In a separate terminal, run:
+**Step 4 — Enable pgvector**
+
+```bash
+docker-compose exec db psql -U rag_user -d rag_support -c "CREATE EXTENSION IF NOT EXISTS vector;"
+```
+
+**Step 5 — Run migrations**
 
 ```bash
 docker-compose exec web python manage.py migrate
 ```
 
-This creates the required tables in the PostgreSQL database, including the ones used for documents, chunks, and conversations.
+**Step 6 — Copy and ingest sample docs**
 
-> Optionally, create an admin superuser for the Django admin:
->
-> ```bash
-> docker-compose exec web python manage.py createsuperuser
-> ```
+Copy the sample docs JSON into the running `web` container:
+
+```bash
+docker cp upload_doc/sample_docs.json api-support-ai-chatbot-web-1:/app/sample_docs.json
+```
+
+Ingest those docs into the vector store:
+
+```bash
+docker-compose exec web python manage.py ingest_docs "AcmePay API" /app/sample_docs.json
+```
+
+**Step 7 — Test chat in Postman**
+
+- Method: `POST`
+- URL: `http://localhost:8000/api/chat/`
+- Headers: `Content-Type: application/json`
+- Body (raw JSON):
+
+```json
+{
+  "query": "How do I authenticate to the AcmePay API?"
+}
+```
+
+You should receive an answer plus citations to the ingested docs.
+
+---
+
+### Scenario 2 — Starting Again After Shutdown (Daily Use)
+
+Once the containers have been built and migrations/docs have been ingested, daily usage is simpler.
+
+**Step 1 — Open Docker Desktop**
+
+Ensure Docker Desktop is fully running (green icon in the taskbar).
+
+**Step 2 — Start containers**
+
+From the project folder:
+
+```bash
+cd "D:\My Apps\RAG AI Chatbot\api-support-ai-chatbot"
+docker-compose up -d
+```
+
+**Step 3 — Verify containers are running**
+
+```bash
+docker ps
+```
+
+You should see at least:
+
+- `api-support-ai-chatbot-web-1` – Up
+- `api-support-ai-chatbot-db-1` – Up
+
+**Step 4 — Send a chat request**
+
+Use Postman (or curl) to call:
+
+- Method: `POST`
+- URL: `http://localhost:8000/api/chat/`
+- Headers: `Content-Type: application/json`
+
+Body:
+
+```json
+{
+  "query": "How do I authenticate to the AcmePay API?"
+}
+```
+
+That’s it – **no migrations, rebuilds, or re-ingestion are needed** unless you change the schema or docs.
+
+---
+
+### Postman Setup (One Time)
+
+1. Open Postman → **New** → **HTTP Request**.
+2. Set method to **POST**.
+3. Set URL to `http://localhost:8000/api/chat/`.
+4. Click **Body** → **raw** → select **JSON**.
+5. Paste a payload such as:
+
+```json
+{
+  "query": "your question here"
+}
+```
+
+6. Click **Send**.
+7. Save this request into a **Collection** so you can reuse it for future testing.
 
 ---
 
@@ -308,7 +452,7 @@ You can also run the project directly on your host if you prefer:
 1. Create and activate a virtual environment:
 
 ```bash
-cd "d:\My Apps\RAG AI Chatbot\API Support"
+cd "d:\My Apps\RAG AI Chatbot\api-support-ai-chatbot"
 python -m venv .venv
 .venv\Scripts\activate
 ```

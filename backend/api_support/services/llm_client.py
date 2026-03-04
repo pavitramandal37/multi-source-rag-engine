@@ -29,7 +29,7 @@ class LLMClient:
             "messages": messages,
             "temperature": temperature,
         }
-        response = requests.post(url, json=payload, headers=self._headers(), timeout=60)
+        response = requests.post(url, json=payload, headers=self._headers(), timeout=180)
         response.raise_for_status()
         data = response.json()
         return data["choices"][0]["message"]["content"]

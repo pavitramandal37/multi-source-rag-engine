@@ -32,6 +32,8 @@ flowchart TD
   djangoApi --> userClient
 ```
 
+
+
 ## 2. Components
 
 ### 2.1 Django API Service (`backend/`)
@@ -54,17 +56,25 @@ flowchart TD
   - Document chunks and their embedding vectors in a `VectorField` (pgvector).
 - Provides **approximate similarity search** by cosine distance over vectors.
 
-### 2.3 Cloud LLM Service
+### 2.3 LLM & Embeddings
 
-- Any **OpenAI-compatible chat completion + embeddings API**:
-  - Configured via environment variables:
-    - `LLM_API_BASE_URL`
-    - `LLM_API_KEY`
-    - `LLM_MODEL_NAME`
-    - `EMBEDDING_MODEL_NAME`
-- Used for:
-  - Computing **embeddings** for documents and user queries.
-  - Generating **answers** to user questions based on retrieved context.
+- **Chat completion**:
+  - Any **OpenAI-compatible chat completions API**:
+    - Configured via:
+      - `LLM_API_BASE_URL`
+      - `LLM_API_KEY`
+      - `LLM_MODEL_NAME`
+- **Embeddings**:
+  - Pluggable backend controlled via:
+    - `EMBEDDING_BACKEND` – `"local"`.
+    - `EMBEDDING_MODEL_NAME` – e.g.:
+      - `"BAAI/bge-small-en"` (sentence-transformers, local).
+      - `"nomic-embed-text"` (if using a compatible provider).
+  - When `EMBEDDING_BACKEND=local`:
+    - Uses `sentence-transformers` to load the model.
+    - Embeddings are padded/truncated to 1536 dims to fit the `VectorField`.
+  - When `EMBEDDING_BACKEND=openai`:
+    - Uses the OpenAI-compatible `/embeddings` HTTP API as before.
 
 ### 2.4 Optional Background Ingestion
 
@@ -82,30 +92,30 @@ Goal: take raw API documentation and turn it into retrievable, vectorized chunks
 Steps:
 
 1. **Input**:
-   - REST call to `POST /api/docs/ingest/` with payload:
-     - `source_name`: a label for this set of docs (e.g. `"Payments API v1"`).
-     - `docs`: list of `{ "title": str, "content": str }`.
-   - Or CLI: `python manage.py ingest_docs <source_name> <json_path>`.
+  - REST call to `POST /api/docs/ingest/` with payload:
+    - `source_name`: a label for this set of docs (e.g. `"Payments API v1"`).
+    - `docs`: list of `{ "title": str, "content": str }`.
+  - Or CLI: `python manage.py ingest_docs <source_name> <json_path>`.
 2. **Django view / command**:
-   - Validates input.
-   - Instantiates `IngestionService`.
+  - Validates input.
+  - Instantiates `IngestionService`.
 3. **IngestionService** (`api_support/services/ingestion.py`):
-   - Creates a `Document` row for each item.
-   - Runs **simple chunking** (`_simple_chunk`) on `content`:
-     - Splits into paragraphs.
-     - Groups paragraphs into chunks of ~`max_tokens_approx`.
-   - For each chunk:
-     - Calls `EmbeddingService.get_embedding(chunk_text)` to get a vector.
-     - Prepares a record with `(document_id, chunk_index, content, metadata, embedding)`.
-   - Calls `VectorStore.upsert_chunks` to bulk insert into `DocumentChunk` with a `VectorField`.
+  - Creates a `Document` row for each item.
+  - Runs **simple chunking** (`_simple_chunk`) on `content`:
+    - Splits into paragraphs.
+    - Groups paragraphs into chunks of ~`max_tokens_approx`.
+  - For each chunk:
+    - Calls `EmbeddingService.get_embedding(chunk_text)` to get a vector.
+    - Prepares a record with `(document_id, chunk_index, content, metadata, embedding)`.
+  - Calls `VectorStore.upsert_chunks` to bulk insert into `DocumentChunk` with a `VectorField`.
 4. **Storage**:
-   - Postgres stores:
-     - `Document` row per doc.
-     - `DocumentChunk` row per chunk, including the embedding.
+  - Postgres stores:
+    - `Document` row per doc.
+    - `DocumentChunk` row per chunk, including the embedding.
 5. **Output**:
-   - REST endpoint returns summaries:
-     - For each doc: `{"document_id": ..., "chunks_created": ...}`.
-   - CLI logs similar information.
+  - REST endpoint returns summaries:
+    - For each doc: `{"document_id": ..., "chunks_created": ...}`.
+  - CLI logs similar information.
 
 Mermaid data flow:
 
@@ -126,6 +136,8 @@ flowchart TD
   vectorStore --> postgres
 ```
 
+
+
 ### 3.2 Question Answering Flow
 
 Goal: answer user questions about how to use an API, using ingested docs as context.
@@ -133,31 +145,31 @@ Goal: answer user questions about how to use an API, using ingested docs as cont
 Steps:
 
 1. **Input**:
-   - REST call to `POST /api/chat/` with payload:
-     - `query`: the user’s question (e.g. `"How do I authenticate to this API?"`).
-     - Optional `conversation_id` to continue an existing conversation.
+  - REST call to `POST /api/chat/` with payload:
+    - `query`: the user’s question (e.g. `"How do I authenticate to this API?"`).
+    - Optional `conversation_id` to continue an existing conversation.
 2. **ChatView** (`api_support/views.py`):
-   - Validates request (`ChatRequestSerializer`).
-   - Instantiates `RAGPipeline`.
-   - Calls `pipeline.answer(question, conversation_id)`.
+  - Validates request (`ChatRequestSerializer`).
+  - Instantiates `RAGPipeline`.
+  - Calls `pipeline.answer(question, conversation_id)`.
 3. **RAGPipeline.answer**:
-   - Fetches or creates a `Conversation`.
-   - Uses `EmbeddingService.get_embedding(question)` to get a query vector.
-   - Uses `VectorStore.search(embedding, top_k)` to retrieve top similar `DocumentChunk`s:
-     - Orders by `CosineDistance("embedding", embedding)`.
-   - Builds a **prompt**:
-     - System message: instructs the model to be an API support assistant and to rely on context.
-     - User message: composed of:
-       - Concatenated context snippets from retrieved chunks (with document titles).
-       - The actual user question.
-   - Sends messages to `LLMClient.chat(messages)` to get the answer text.
-   - Appends `Message` rows for the user question and assistant answer.
-   - Packages the answer and sources (doc IDs, titles, chunk indices, snippets).
+  - Fetches or creates a `Conversation`.
+  - Uses `EmbeddingService.get_embedding(question)` to get a query vector.
+  - Uses `VectorStore.search(embedding, top_k)` to retrieve top similar `DocumentChunk`s:
+    - Orders by `CosineDistance("embedding", embedding)`.
+  - Builds a **prompt**:
+    - System message: instructs the model to be an API support assistant and to rely on context.
+    - User message: composed of:
+      - Concatenated context snippets from retrieved chunks (with document titles).
+      - The actual user question.
+  - Sends messages to `LLMClient.chat(messages)` to get the answer text.
+  - Appends `Message` rows for the user question and assistant answer.
+  - Packages the answer and sources (doc IDs, titles, chunk indices, snippets).
 4. **Output**:
-   - `ChatView` serializes the response via `ChatResponseSerializer`:
-     - `answer`: LLM text.
-     - `sources`: list of citations.
-     - `conversation_id`: for future follow-ups.
+  - `ChatView` serializes the response via `ChatResponseSerializer`:
+    - `answer`: LLM text.
+    - `sources`: list of citations.
+    - `conversation_id`: for future follow-ups.
 
 Mermaid data flow:
 
@@ -188,6 +200,8 @@ flowchart TD
   chatView --> qaClient
 ```
 
+
+
 ### 3.3 Conversation Continuation
 
 - When a `conversation_id` is provided:
@@ -199,12 +213,12 @@ flowchart TD
 
 ### 4.1 Models (`backend/api_support/models.py`)
 
-- **`Document`**
+- `**Document**`
   - Fields:
     - `title`: human-readable title for the document.
     - `source_name`: grouping label (e.g. `"Payments API"`).
     - `created_at`: timestamp.
-- **`DocumentChunk`**
+- `**DocumentChunk**`
   - Fields:
     - `document`: FK to `Document`.
     - `chunk_index`: order index within the document.
@@ -214,11 +228,11 @@ flowchart TD
     - `created_at`: timestamp.
   - Indexes:
     - `document, chunk_index` for ordering.
-- **`Conversation`**
+- `**Conversation**`
   - Fields:
     - `title`: optional short label (defaults to truncated first query).
     - `created_at`: timestamp.
-- **`Message`**
+- `**Message**`
   - Fields:
     - `conversation`: FK to `Conversation`.
     - `role`: `"user"` or `"assistant"`.
@@ -229,26 +243,26 @@ flowchart TD
 
 ### 4.2 Services
 
-- **`EmbeddingService` (`services/embedding.py`)**
+- `**EmbeddingService` (`services/embedding.py`)**
   - Encapsulates the embeddings HTTP API.
   - Uses `LLM_API_BASE_URL`, `LLM_API_KEY`, `EMBEDDING_MODEL_NAME`.
   - Method:
     - `get_embedding(text: str) -> list[float]`
       - Calls `POST /embeddings` and returns `data[0].embedding`.
-- **`LLMClient` (`services/llm_client.py`)**
+- `**LLMClient` (`services/llm_client.py`)**
   - Encapsulates chat completion.
   - Uses `LLM_API_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL_NAME`.
   - Method:
     - `chat(messages: list[dict], temperature: float = 0.2) -> str`
       - Calls `POST /chat/completions` and returns the assistant message content.
-- **`VectorStore` (`services/vector_store.py`)**
+- `**VectorStore` (`services/vector_store.py`)**
   - Abstracts Postgres+pgvector access.
   - Methods:
     - `upsert_chunks(chunks)`:
       - Bulk inserts `DocumentChunk` rows.
     - `search(embedding, top_k)`:
       - Orders `DocumentChunk` by `CosineDistance("embedding", embedding)` and returns top `k`.
-- **`RAGPipeline` (`services/rag_pipeline.py`)**
+- `**RAGPipeline` (`services/rag_pipeline.py`)**
   - Central orchestration for question answering.
   - Responsibilities:
     - Manage conversation lifecycle.
@@ -256,7 +270,7 @@ flowchart TD
     - Retrieve similar chunks.
     - Build prompt and call LLM.
     - Save messages and return structured response (`RAGResponse` dataclass).
-- **`IngestionService` (`services/ingestion.py`)**
+- `**IngestionService` (`services/ingestion.py`)**
   - Orchestrates document ingestion.
   - Responsibilities:
     - Chunk raw text.
@@ -297,7 +311,10 @@ flowchart TD
   - Database:
     - `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT`.
   - LLM:
-    - `LLM_API_KEY`, `LLM_API_BASE_URL`, `LLM_MODEL_NAME`, `EMBEDDING_MODEL_NAME`.
+    - `LLM_API_KEY`, `LLM_API_BASE_URL`, `LLM_MODEL_NAME`.
+  - Embeddings:
+    - `EMBEDDING_BACKEND` (`openai` or `local`).
+    - `EMBEDDING_MODEL_NAME` (e.g. `BAAI/bge-small-en`).
 
 ### 5.2 Logging and Error Handling
 
