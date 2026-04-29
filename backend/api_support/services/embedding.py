@@ -59,7 +59,7 @@ class EmbeddingService:
         response = requests.post(url, json=payload, headers=self._headers(), timeout=60)
         response.raise_for_status()
         data = response.json()
-        return data["data"][0]["embedding"]
+        return self._adapt_dimension(data["data"][0]["embedding"])
 
     def _get_embedding_local(self, text: str) -> List[float]:
         model = _load_local_model(self.model)
