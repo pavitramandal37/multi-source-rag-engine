@@ -1,4 +1,5 @@
 import json
+import re
 from dataclasses import dataclass
 from typing import Any, Dict, List, Sequence
 
@@ -18,6 +19,48 @@ class RAGResponse:
     sources: List[Dict[str, Any]]
     conversation_id: int
     confidence: str = "high"  # "high" | "low" | "none"
+
+
+_CONVERSATIONAL_RE = re.compile(
+    r"^\s*("
+    r"hi+[!.]*|hello+[!.]*|hey+[!.]*|howdy[!.]*|greetings[!.]*|"
+    r"good\s+(morning|afternoon|evening|day)[!.]*|"
+    r"who\s+are\s+you\??|what\s+are\s+you\??|"
+    r"what\s+can\s+you\s+(do|help)\??|"
+    r"can\s+you\s+help(\s+me)?\??|"
+    r"thank(s|\s+you)[!.]*|bye[!.]*|goodbye[!.]*"
+    r")\s*$",
+    re.IGNORECASE,
+)
+
+_CONVERSATIONAL_REPLY = (
+    "Hi! I'm an AI assistant here to help you find information from the indexed knowledge base. "
+    "Feel free to ask me anything — I'll search through the available sources and give you an accurate answer."
+)
+
+_CITED_RE = re.compile(r"(?im)^\s*CITED\s*:\s*\[([^\]]*)\]\s*$")
+_NO_INFO_RE = re.compile(
+    r"(?i)(i\s+don'?t\s+have|not\s+found\s+in\s+the\s+(provided\s+)?context|"
+    r"context\s+(is\s+)?insufficient|no\s+(relevant\s+)?information\s+(is\s+)?available)"
+)
+_MAX_CITATIONS = 3
+
+
+def _parse_cited(answer_text: str) -> tuple[str, list[int] | None]:
+    """Strip the CITED: line and return (clean_answer, indices_1based_or_None)."""
+    match = _CITED_RE.search(answer_text)
+    if not match:
+        return answer_text.rstrip(), None
+    raw = match.group(1).strip()
+    cleaned = _CITED_RE.sub("", answer_text).rstrip()
+    if not raw:
+        return cleaned, []
+    indices: list[int] = []
+    for token in raw.split(","):
+        token = token.strip()
+        if token.isdigit():
+            indices.append(int(token))
+    return cleaned, indices
 
 
 class RAGPipeline:
@@ -143,7 +186,12 @@ class RAGPipeline:
             "You are a grounded RAG assistant. "
             "Answer the user's question STRICTLY based on the provided context. "
             "Do not invent facts not present in the context. "
-            "If the context is insufficient, say so clearly."
+            "If the context is insufficient, say so clearly.\n\n"
+            "After your answer, on a NEW final line, output exactly: "
+            "CITED: [<comma-separated chunk numbers you actually used>]\n"
+            "Examples: 'CITED: [1]', 'CITED: [2,4]', or 'CITED: []' if you used none.\n"
+            "Only list chunks whose content directly supports your answer. "
+            "Do not list chunks you did not use."
         )
 
     def _build_messages(
@@ -153,17 +201,19 @@ class RAGPipeline:
         conversation: Conversation,
     ) -> List[Dict[str, str]]:
         context_parts = []
-        for c in retrieved_chunks:
+        for i, c in enumerate(retrieved_chunks, start=1):
             meta = c.metadata or {}
             citation_url = meta.get("citation_url", "")
             label = meta.get("heading") or c.document.title
-            context_parts.append(f"[{label}]({citation_url})\n{c.content}")
+            context_parts.append(f"[{i}] [{label}]({citation_url})\n{c.content}")
         context_text = "\n\n---\n\n".join(context_parts) or "[No relevant context found]"
 
         user_prompt = (
             f"Context:\n{context_text}\n\n"
             f"Question: {question}\n\n"
-            "Answer strictly from the context above."
+            "Answer strictly from the context above. "
+            "Remember to end with a CITED: [...] line listing only the chunk "
+            "numbers you actually used."
         )
 
         messages: List[Dict[str, str]] = [
@@ -193,6 +243,21 @@ class RAGPipeline:
             {"role": m.role, "content": m.content}
             for m in conversation.messages.all()
         ]
+
+        # Handle conversational/greeting queries without RAG
+        if _CONVERSATIONAL_RE.match(question.strip()):
+            Message.objects.create(
+                conversation=conversation, role=Message.ROLE_USER, content=question
+            )
+            Message.objects.create(
+                conversation=conversation, role=Message.ROLE_ASSISTANT, content=_CONVERSATIONAL_REPLY
+            )
+            return RAGResponse(
+                answer=_CONVERSATIONAL_REPLY,
+                sources=[],
+                conversation_id=conversation.id,
+                confidence="high",
+            )
 
         # 2. Query rewriting (multi-turn memory)
         standalone_query = self._rewrite_query(question, history)
@@ -237,9 +302,12 @@ class RAGPipeline:
 
         # 7. Final LLM call with grounded context
         messages = self._build_messages(standalone_query, chunks, conversation)
-        answer_text = self.llm_client.chat(messages)
+        raw_answer = self.llm_client.chat(messages)
 
-        # 8. Persist conversation messages
+        # 7a. Parse the CITED: trailer (LLM-declared citations)
+        answer_text, cited_indices = _parse_cited(raw_answer)
+
+        # 8. Persist conversation messages (clean answer, no CITED line)
         Message.objects.create(
             conversation=conversation, role=Message.ROLE_USER, content=question
         )
@@ -247,9 +315,25 @@ class RAGPipeline:
             conversation=conversation, role=Message.ROLE_ASSISTANT, content=answer_text
         )
 
-        # 9. Build sources with citation_url from chunk metadata
-        sources = []
-        for c in chunks:
+        # 9. Build sources from LLM-declared citations only.
+        #    - cited_indices == []        → LLM used no chunks → no sources
+        #    - cited_indices is None      → LLM omitted the trailer → fall back to top retrieved chunk
+        #    - "I don't have this info"   → suppress sources entirely
+        sources: list[dict] = []
+        if _NO_INFO_RE.search(answer_text):
+            cited_chunks: list = []
+        elif cited_indices == []:
+            cited_chunks = []
+        elif cited_indices is None:
+            cited_chunks = chunks[:1]
+        else:
+            cited_chunks = [chunks[i - 1] for i in cited_indices if 1 <= i <= len(chunks)]
+
+        seen_docs: set = set()
+        for c in cited_chunks:
+            if c.document_id in seen_docs:
+                continue
+            seen_docs.add(c.document_id)
             meta = c.metadata or {}
             src = c.document.source
             sources.append({
@@ -261,6 +345,8 @@ class RAGPipeline:
                 "source_type": src.type if src else "",
                 "source_origin": src.origin if src else "",
             })
+            if len(sources) >= _MAX_CITATIONS:
+                break
 
         return RAGResponse(
             answer=answer_text,

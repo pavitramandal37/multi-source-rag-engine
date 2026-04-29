@@ -39,7 +39,7 @@
     const section = document.createElement("div");
     section.className = "citation-section";
 
-    const header = document.createElement("div");
+    const header = document.createElement("span");
     header.className = "citation-section-header";
     header.textContent = "Sources";
     section.appendChild(header);
@@ -47,82 +47,35 @@
     const bar = document.createElement("div");
     bar.className = "citation-bar";
 
-    sources.forEach((s, idx) => {
-      const wrapper = document.createElement("div");
-      wrapper.className = "citation-wrapper";
+    sources.forEach((s) => {
+      const pill = document.createElement("div");
+      pill.className = "citation-pill";
 
-      // Chip — expanded by default
-      const chip = document.createElement("button");
-      chip.className = "citation-chip";
-      chip.setAttribute("aria-expanded", "true");
-      chip.type = "button";
-
-      // Source-type dot badge
       const typeKey = (s.source_type || "").toLowerCase();
       const typeLabel = SOURCE_TYPE_LABELS[typeKey] || "SRC";
       const typeClass = SOURCE_TYPE_CLASSES[typeKey] || "src-url";
+
       const badge = document.createElement("span");
       badge.className = `src-badge ${typeClass}`;
       badge.textContent = typeLabel;
+      pill.appendChild(badge);
 
-      const titleSpan = document.createElement("span");
-      titleSpan.textContent = s.document_title || "Source";
-
-      const chevron = document.createElement("span");
-      chevron.className = "citation-chevron";
-      chevron.textContent = "▴";
-
-      chip.appendChild(badge);
-      chip.appendChild(titleSpan);
-      chip.appendChild(chevron);
-
-      // Detail — visible by default
-      const detail = document.createElement("div");
-      detail.className = "citation-detail";
-
-      if (s.snippet) {
-        const snippet = document.createElement("p");
-        snippet.className = "citation-snippet";
-        snippet.textContent = s.snippet;
-        detail.appendChild(snippet);
-      }
-
-      const footer = document.createElement("div");
-      footer.className = "citation-footer";
-
-      if (s.source_origin) {
-        const origin = document.createElement("span");
-        origin.className = "citation-origin";
-        try {
-          origin.textContent = new URL(s.source_origin).hostname;
-        } catch {
-          origin.textContent = s.source_origin;
-        }
-        footer.appendChild(origin);
-      }
+      const title = document.createElement("span");
+      title.className = "citation-pill-title";
+      title.textContent = s.document_title || "Source";
+      pill.appendChild(title);
 
       if (s.citation_url) {
         const link = document.createElement("a");
         link.href = s.citation_url;
         link.target = "_blank";
         link.rel = "noopener noreferrer";
-        link.className = "open-source-btn";
+        link.className = "citation-pill-link";
         link.textContent = "Open source ↗";
-        footer.appendChild(link);
+        pill.appendChild(link);
       }
 
-      if (footer.hasChildNodes()) detail.appendChild(footer);
-
-      chip.addEventListener("click", () => {
-        const expanded = chip.getAttribute("aria-expanded") === "true";
-        chip.setAttribute("aria-expanded", String(!expanded));
-        detail.classList.toggle("collapsed");
-        chevron.textContent = expanded ? "▾" : "▴";
-      });
-
-      wrapper.appendChild(chip);
-      wrapper.appendChild(detail);
-      bar.appendChild(wrapper);
+      bar.appendChild(pill);
     });
 
     section.appendChild(bar);

@@ -128,7 +128,7 @@ time=... level=INFO source=... msg="Listening on 127.0.0.1:11434"
 ### Step 4 — Build and start Docker (Terminal 2 — keep open)
 
 ```powershell
-cd "D:\My Apps\RAG AI Chatbot\api-support-ai-chatbot"
+cd "{Your project path}"
 docker compose up --build
 ```
 
