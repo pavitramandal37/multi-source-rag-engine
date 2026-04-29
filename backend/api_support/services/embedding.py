@@ -7,7 +7,7 @@ import requests
 from sentence_transformers import SentenceTransformer
 
 
-VECTOR_DIMENSIONS = 1536
+VECTOR_DIMENSIONS = getattr(settings, "VECTOR_DIMENSIONS", 768)
 
 
 @lru_cache(maxsize=1)

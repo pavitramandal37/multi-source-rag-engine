@@ -2,7 +2,10 @@
   "permissions": {
     "allow": [
       "Bash(grep -E \"\\\\.\\(html|js|css\\)$\")",
-      "Bash(xargs grep *)"
+      "Bash(xargs grep *)",
+      "Bash(xargs ls *)",
+      "Read(//d/d/My Apps/General RAG AI/**)",
+      "Bash(python -m py_compile backend/api_support/services/*.py backend/api_support/*.py)"
     ]
   }
 }

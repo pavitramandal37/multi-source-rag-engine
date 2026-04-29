@@ -25,14 +25,17 @@
     <div id="message-list" class="message-list" role="log" aria-live="polite" aria-label="Conversation"></div>
 
     <form id="chat-form" class="chat-input-bar" autocomplete="off">
-      <textarea
-        id="query-input"
-        class="query-input"
-        rows="2"
-        placeholder="Ask a question…"
-        required
-        aria-label="Your question"
-      ></textarea>
+      <div class="input-wrap">
+        <textarea
+          id="query-input"
+          class="query-input"
+          rows="2"
+          placeholder="Ask a question…"
+          required
+          aria-label="Your question"
+        ></textarea>
+        <p class="input-hint">↵ Send &nbsp;·&nbsp; ⇧↵ New line</p>
+      </div>
       <button type="submit" class="send-btn" id="send-btn">Send</button>
     </form>
   </section>

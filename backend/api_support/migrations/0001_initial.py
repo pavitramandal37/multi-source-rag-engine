@@ -10,6 +10,7 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
+        ('api_support', '0000_enable_vector_extension'),
     ]
 
     operations = [
@@ -50,7 +51,7 @@ class Migration(migrations.Migration):
                 ('chunk_index', models.PositiveIntegerField()),
                 ('content', models.TextField()),
                 ('metadata', models.JSONField(blank=True, default=dict)),
-                ('embedding', pgvector.django.vector.VectorField(dimensions=1536)),
+                ('embedding', pgvector.django.vector.VectorField(dimensions=768)),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 ('document', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='chunks', to='api_support.document')),
             ],

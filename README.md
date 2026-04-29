@@ -99,7 +99,7 @@ You should see both `llama3.2` and `nomic-embed-text` in the list.
 In your project folder, copy the example config:
 
 ```powershell
-cd "D:\My Apps\RAG AI Chatbot\api-support-ai-chatbot"
+cd "{Your project path}"
 copy env.example .env
 ```
 

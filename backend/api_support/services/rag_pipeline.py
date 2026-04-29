@@ -1,6 +1,8 @@
 import json
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, Dict, List, Sequence
+
+import numpy as np
 
 from django.conf import settings
 
@@ -61,11 +63,14 @@ class RAGPipeline:
 
     # ── Step 2: HyDE ─────────────────────────────────────────────────────────
 
-    _HYDE_SYSTEM = "You are a technical documentation writer."
+    _HYDE_SYSTEM = (
+        "You are a knowledgeable assistant. Generate a concise, factual answer "
+        "based on what the source content is likely to say."
+    )
     _HYDE_USER = (
         "Write a concise 2-3 sentence answer to the following question as if "
-        "you were reading it from a documentation page. "
-        "Focus on technical accuracy. Output ONLY the hypothetical answer, no preamble.\n\n"
+        "you found it in the relevant source material. "
+        "Output ONLY the hypothetical answer, no preamble.\n\n"
         "Question: {question}"
     )
 
@@ -95,7 +100,7 @@ class RAGPipeline:
     def _grade_chunks(self, query: str, chunks: Sequence) -> List[float]:
         """Return a relevance score 0.0–1.0 for each chunk in one LLM call."""
         numbered = "\n".join(
-            f"{i + 1}. {c.content[:400]}" for i, c in enumerate(chunks)
+            f"{i + 1}. {c.content[:600]}" for i, c in enumerate(chunks)
         )
         messages = [
             {
@@ -114,8 +119,8 @@ class RAGPipeline:
             pass
         except LLMUnavailableError:
             pass
-        # Parse failure or LLM unavailable → neutral scores (keep all chunks)
-        return [0.5] * len(chunks)
+        # Parse failure or LLM unavailable → pass all chunks through
+        return [1.0] * len(chunks)
 
     def _crag_filter(self, query: str, chunks: Sequence) -> tuple:
         """
@@ -175,7 +180,7 @@ class RAGPipeline:
         self,
         question: str,
         conversation_id: int | None = None,
-        top_k: int = 5,
+        top_k: int = 8,
         source_ids: List[int] | None = None,
     ) -> RAGResponse:
         # 1. Load or create conversation
@@ -192,10 +197,15 @@ class RAGPipeline:
         # 2. Query rewriting (multi-turn memory)
         standalone_query = self._rewrite_query(question, history)
 
-        # 3. HyDE: embed hypothetical answer instead of raw query
+        # 3. HyDE: blend raw query embedding with hypothetical answer embedding
+        # Pure HyDE can hallucinate off-topic text; blending anchors the search.
         if self.use_hyde:
             hyde_text = self._hypothetical_answer(standalone_query)
-            query_embedding = self.embedding_service.get_embedding(hyde_text)
+            raw_emb = np.array(self.embedding_service.get_embedding(standalone_query))
+            hyde_emb = np.array(self.embedding_service.get_embedding(hyde_text))
+            blended = 0.7 * raw_emb + 0.3 * hyde_emb
+            norm = np.linalg.norm(blended)
+            query_embedding = (blended / norm if norm > 0 else blended).tolist()
         else:
             query_embedding = self.embedding_service.get_embedding(standalone_query)
 
@@ -241,12 +251,15 @@ class RAGPipeline:
         sources = []
         for c in chunks:
             meta = c.metadata or {}
+            src = c.document.source
             sources.append({
                 "document_id": c.document_id,
                 "document_title": c.document.title,
                 "chunk_index": c.chunk_index,
                 "snippet": c.content[:300],
                 "citation_url": meta.get("citation_url", ""),
+                "source_type": src.type if src else "",
+                "source_origin": src.origin if src else "",
             })
 
         return RAGResponse(

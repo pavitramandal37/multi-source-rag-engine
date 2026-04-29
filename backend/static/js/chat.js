@@ -30,27 +30,76 @@
       .replace(/"/g, "&quot;");
   }
 
+  const SOURCE_TYPE_LABELS = { url: "URL", pdf: "PDF", markdown: "MD", json: "JSON" };
+  const SOURCE_TYPE_CLASSES = { url: "src-url", pdf: "src-pdf", markdown: "src-md", json: "src-json" };
+
   function buildCitationBar(sources) {
     if (!sources || sources.length === 0) return null;
+
+    const section = document.createElement("div");
+    section.className = "citation-section";
+
+    const header = document.createElement("div");
+    header.className = "citation-section-header";
+    header.textContent = "Sources";
+    section.appendChild(header);
+
     const bar = document.createElement("div");
     bar.className = "citation-bar";
 
-    sources.forEach(s => {
+    sources.forEach((s, idx) => {
       const wrapper = document.createElement("div");
+      wrapper.className = "citation-wrapper";
 
+      // Chip — expanded by default
       const chip = document.createElement("button");
       chip.className = "citation-chip";
-      chip.setAttribute("aria-expanded", "false");
-      chip.textContent = s.document_title || "Source";
+      chip.setAttribute("aria-expanded", "true");
       chip.type = "button";
 
-      const detail = document.createElement("div");
-      detail.className = "citation-detail hidden";
+      // Source-type dot badge
+      const typeKey = (s.source_type || "").toLowerCase();
+      const typeLabel = SOURCE_TYPE_LABELS[typeKey] || "SRC";
+      const typeClass = SOURCE_TYPE_CLASSES[typeKey] || "src-url";
+      const badge = document.createElement("span");
+      badge.className = `src-badge ${typeClass}`;
+      badge.textContent = typeLabel;
 
-      const snippet = document.createElement("p");
-      snippet.className = "snippet";
-      snippet.textContent = s.snippet || "";
-      detail.appendChild(snippet);
+      const titleSpan = document.createElement("span");
+      titleSpan.textContent = s.document_title || "Source";
+
+      const chevron = document.createElement("span");
+      chevron.className = "citation-chevron";
+      chevron.textContent = "▴";
+
+      chip.appendChild(badge);
+      chip.appendChild(titleSpan);
+      chip.appendChild(chevron);
+
+      // Detail — visible by default
+      const detail = document.createElement("div");
+      detail.className = "citation-detail";
+
+      if (s.snippet) {
+        const snippet = document.createElement("p");
+        snippet.className = "citation-snippet";
+        snippet.textContent = s.snippet;
+        detail.appendChild(snippet);
+      }
+
+      const footer = document.createElement("div");
+      footer.className = "citation-footer";
+
+      if (s.source_origin) {
+        const origin = document.createElement("span");
+        origin.className = "citation-origin";
+        try {
+          origin.textContent = new URL(s.source_origin).hostname;
+        } catch {
+          origin.textContent = s.source_origin;
+        }
+        footer.appendChild(origin);
+      }
 
       if (s.citation_url) {
         const link = document.createElement("a");
@@ -59,13 +108,16 @@
         link.rel = "noopener noreferrer";
         link.className = "open-source-btn";
         link.textContent = "Open source ↗";
-        detail.appendChild(link);
+        footer.appendChild(link);
       }
+
+      if (footer.hasChildNodes()) detail.appendChild(footer);
 
       chip.addEventListener("click", () => {
         const expanded = chip.getAttribute("aria-expanded") === "true";
         chip.setAttribute("aria-expanded", String(!expanded));
-        detail.classList.toggle("hidden");
+        detail.classList.toggle("collapsed");
+        chevron.textContent = expanded ? "▾" : "▴";
       });
 
       wrapper.appendChild(chip);
@@ -73,7 +125,8 @@
       bar.appendChild(wrapper);
     });
 
-    return bar;
+    section.appendChild(bar);
+    return section;
   }
 
   function appendMessage(role, htmlContent, sources, confidence) {
@@ -200,9 +253,9 @@
     }
   });
 
-  // Submit on Ctrl+Enter / Cmd+Enter
+  // Enter submits; Shift+Enter inserts a newline
   queryInput.addEventListener("keydown", (e) => {
-    if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+    if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       chatForm.dispatchEvent(new Event("submit", { cancelable: true }));
     }

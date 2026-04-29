@@ -1,0 +1,548 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 1480" width="1100" height="1480"
+     font-family="'Segoe UI', Inter, system-ui, sans-serif">
+
+<defs>
+  <style>
+    .lane-bg  { fill: #0f1117; }
+    .lane-hdr { fill: #1a1d27; }
+    .lane-lbl { fill: #7b82a6; font-size: 11px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; }
+
+    /* Node base */
+    .node rect  { rx: 8; ry: 8; cursor: pointer; transition: filter 0.2s; }
+    .node rect:hover { filter: brightness(1.25); }
+    .node-lbl   { fill: #e2e4f0; font-size: 13px; font-weight: 600; pointer-events: none; }
+    .node-sub   { fill: #7b82a6; font-size: 10px; pointer-events: none; }
+
+    /* Color families */
+    .c-ingest   { fill: #1a3a3a; stroke: #2dd4bf; stroke-width: 1.5; }
+    .c-embed    { fill: #2a1a3a; stroke: #a78bfa; stroke-width: 1.5; }
+    .c-store    { fill: #1a2a3a; stroke: #60a5fa; stroke-width: 1.5; }
+    .c-query    { fill: #3a2a1a; stroke: #fb923c; stroke-width: 1.5; }
+    .c-hyde     { fill: #2a1a2a; stroke: #e879f9; stroke-width: 1.5; }
+    .c-crag     { fill: #1a2a1a; stroke: #4ade80; stroke-width: 1.5; }
+    .c-llm      { fill: #3a1a1a; stroke: #f87171; stroke-width: 1.5; }
+    .c-response { fill: #1a1a2a; stroke: #6c8cf4; stroke-width: 1.5; }
+    .c-db       { fill: #1a2a20; stroke: #34d399; stroke-width: 1.5; }
+
+    /* Arrows */
+    .arrow { stroke: #2e3250; stroke-width: 1.5; fill: none; marker-end: url(#arrowhead); }
+    .arrow-dashed { stroke: #2e3250; stroke-width: 1.5; fill: none; stroke-dasharray: 5 3; marker-end: url(#arrowhead); }
+
+    /* Popup overlay */
+    .popup-bg   { fill: #1a1d27; stroke: #6c8cf4; stroke-width: 1.5; rx: 10; ry: 10; }
+    .popup-title{ fill: #6c8cf4; font-size: 13px; font-weight: 700; }
+    .popup-file { fill: #a78bfa; font-size: 10px; }
+    .popup-body { fill: #e2e4f0; font-size: 11px; }
+    .popup-key  { fill: #4ade80; font-size: 10px; font-family: 'JetBrains Mono', monospace; }
+    .popup-close{ fill: #7b82a6; font-size: 14px; font-weight: 700; cursor: pointer; }
+    .popup-close:hover { fill: #e2e4f0; }
+
+    .badge-url  { fill: rgba(108,140,244,0.25); }
+    .badge-pdf  { fill: rgba(224,85,85,0.25); }
+    .badge-md   { fill: rgba(78,201,123,0.25); }
+    .badge-json { fill: rgba(232,168,78,0.25); }
+    .badge-lbl  { font-size: 9px; font-weight: 700; letter-spacing: 0.4px; }
+  </style>
+  <marker id="arrowhead" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+    <polygon points="0 0, 8 3, 0 6" fill="#2e3250"/>
+  </marker>
+</defs>
+
+<!-- ═══════════════════════════════════════════════════ BACKGROUND ══ -->
+<rect width="1100" height="1480" fill="#0f1117"/>
+
+<!-- ═══════════════════════════════════════════════ TITLE BAR ══════ -->
+<rect x="0" y="0" width="1100" height="52" fill="#1a1d27"/>
+<rect x="0" y="52" width="1100" height="1" fill="#2e3250"/>
+<text x="550" y="32" text-anchor="middle" fill="#e2e4f0" font-size="18" font-weight="700">API Support AI Chatbot — System Flow</text>
+<text x="550" y="48" text-anchor="middle" fill="#7b82a6" font-size="10">Click any node for details · Open in browser · docs/SYSTEM_DOCUMENTATION.md for full reference</text>
+
+<!-- ════════════════════════════════════════ LANE 1: INGESTION ══════ -->
+<rect x="20" y="70" width="1060" height="540" fill="#0d1016" rx="10"/>
+<rect x="20" y="70" width="1060" height="30" fill="#131620" rx="10"/>
+<rect x="20" y="90" width="1060" height="10" fill="#131620"/>
+<text x="40" y="90" class="lane-lbl" fill="#2dd4bf">INGESTION PIPELINE</text>
+<text x="40" y="106" fill="#7b82a6" font-size="10">Sources → Chunking → Embedding → Vector Store  ·  services/url_ingestion.py · pdf_ingestion.py · markdown_ingestion.py</text>
+
+<!-- Source type badges (top row) -->
+<!-- URL node -->
+<g class="node" onclick="showPopup('url-popup')" transform="translate(40,120)">
+  <rect width="180" height="70" class="c-ingest"/>
+  <rect x="8" y="8" width="32" height="14" rx="3" class="badge-url"/>
+  <text x="24" y="19" class="badge-lbl" fill="#6c8cf4" text-anchor="middle">URL</text>
+  <text x="90" y="42" class="node-lbl" text-anchor="middle">URL Source</text>
+  <text x="90" y="57" class="node-sub" text-anchor="middle">url_ingestion.py</text>
+  <title>URL Ingestion — click for details</title>
+</g>
+
+<!-- PDF node -->
+<g class="node" onclick="showPopup('pdf-popup')" transform="translate(250,120)">
+  <rect width="180" height="70" class="c-ingest"/>
+  <rect x="8" y="8" width="28" height="14" rx="3" class="badge-pdf"/>
+  <text x="22" y="19" class="badge-lbl" fill="#f87171" text-anchor="middle">PDF</text>
+  <text x="90" y="42" class="node-lbl" text-anchor="middle">PDF Source</text>
+  <text x="90" y="57" class="node-sub" text-anchor="middle">pdf_ingestion.py</text>
+  <title>PDF Ingestion — click for details</title>
+</g>
+
+<!-- Markdown node -->
+<g class="node" onclick="showPopup('md-popup')" transform="translate(460,120)">
+  <rect width="180" height="70" class="c-ingest"/>
+  <rect x="8" y="8" width="28" height="14" rx="3" class="badge-md"/>
+  <text x="22" y="19" class="badge-lbl" fill="#4ade80" text-anchor="middle">MD</text>
+  <text x="90" y="42" class="node-lbl" text-anchor="middle">Markdown Source</text>
+  <text x="90" y="57" class="node-sub" text-anchor="middle">markdown_ingestion.py</text>
+  <title>Markdown Ingestion — click for details</title>
+</g>
+
+<!-- JSON node -->
+<g class="node" onclick="showPopup('json-popup')" transform="translate(670,120)">
+  <rect width="180" height="70" class="c-ingest"/>
+  <rect x="8" y="8" width="32" height="14" rx="3" class="badge-json"/>
+  <text x="24" y="19" class="badge-lbl" fill="#fb923c" text-anchor="middle">JSON</text>
+  <text x="90" y="42" class="node-lbl" text-anchor="middle">JSON Source</text>
+  <text x="90" y="57" class="node-sub" text-anchor="middle">ingestion.py (legacy)</text>
+  <title>JSON Ingestion — click for details</title>
+</g>
+
+<!-- Arrows: sources → chunking -->
+<line x1="130" y1="190" x2="130" y2="240" class="arrow"/>
+<line x1="340" y1="190" x2="280" y2="240" class="arrow"/>
+<line x1="550" y1="190" x2="430" y2="240" class="arrow"/>
+<line x1="760" y1="190" x2="580" y2="240" class="arrow"/>
+
+<!-- Chunking node -->
+<g class="node" onclick="showPopup('chunk-popup')" transform="translate(340,240)">
+  <rect width="420" height="80" class="c-ingest"/>
+  <text x="210" y="32" class="node-lbl" text-anchor="middle">Text Chunking</text>
+  <text x="210" y="50" class="node-sub" text-anchor="middle">URL: trafilatura + heading boundaries</text>
+  <text x="210" y="65" class="node-sub" text-anchor="middle">PDF: per-page  ·  MD: per-## heading  ·  JSON: paragraphs</text>
+  <title>Chunking — click for details</title>
+</g>
+
+<!-- Arrow: chunking → base_ingestion -->
+<line x1="550" y1="320" x2="550" y2="375" class="arrow"/>
+
+<!-- Base ingestion node -->
+<g class="node" onclick="showPopup('base-popup')" transform="translate(310,375)">
+  <rect width="480" height="70" class="c-embed"/>
+  <text x="240" y="35" class="node-lbl" text-anchor="middle">BaseIngestionService._embed_and_store()</text>
+  <text x="240" y="53" class="node-sub" text-anchor="middle">Groups chunks → Document records · calls EmbeddingService per chunk</text>
+  <title>Base Ingestion Service — click for details</title>
+</g>
+
+<!-- Arrow: base → embed -->
+<line x1="550" y1="445" x2="550" y2="490" class="arrow"/>
+
+<!-- Embedding node -->
+<g class="node" onclick="showPopup('embed-popup')" transform="translate(290,490)">
+  <rect width="520" height="80" class="c-embed"/>
+  <text x="260" y="33" class="node-lbl" text-anchor="middle">EmbeddingService.get_embedding(text)</text>
+  <text x="260" y="50" class="node-sub" text-anchor="middle">Backend: local (SentenceTransformers) or openai API</text>
+  <text x="260" y="65" class="node-sub" text-anchor="middle">Output adapted to VECTOR_DIMENSIONS (default 768) · padding / truncation</text>
+  <title>Embedding Service — click for details</title>
+</g>
+
+<!-- Arrow: embed → vector store -->
+<line x1="550" y1="570" x2="550" y2="555" class="arrow"/>
+<line x1="550" y1="570" x2="550" y2="560"/>
+
+<!-- VectorStore upsert node -->
+<g class="node" onclick="showPopup('store-popup')" transform="translate(340,575)">
+  <rect width="420" height="70" class="c-store"/>
+  <text x="210" y="32" class="node-lbl" text-anchor="middle">VectorStore.upsert_chunks()</text>
+  <text x="210" y="50" class="node-sub" text-anchor="middle">PostgreSQL + pgvector · DocumentChunk(embedding VectorField 768-d)</text>
+  <text x="210" y="65" class="node-sub" text-anchor="middle">vector_store.py · bulk_create</text>
+  <title>Vector Store upsert — click for details</title>
+</g>
+<line x1="550" y1="575" x2="550" y2="570" class="arrow"/>
+
+<!-- ═══════════════════════════════════════ LANE 2: QUERY PIPELINE ══ -->
+<rect x="20" y="630" width="1060" height="820" fill="#0d1016" rx="10"/>
+<rect x="20" y="630" width="1060" height="30" fill="#131620" rx="10"/>
+<rect x="20" y="650" width="1060" height="10" fill="#131620"/>
+<text x="40" y="650" class="lane-lbl" fill="#fb923c">QUERY PIPELINE</text>
+<text x="40" y="666" fill="#7b82a6" font-size="10">User Query → RAGPipeline.answer()  ·  services/rag_pipeline.py</text>
+
+<!-- User query node -->
+<g class="node" onclick="showPopup('userq-popup')" transform="translate(340,680)">
+  <rect width="420" height="60" class="c-query"/>
+  <text x="210" y="30" class="node-lbl" text-anchor="middle">User Question</text>
+  <text x="210" y="48" class="node-sub" text-anchor="middle">POST /api/chat/  ·  {query, conversation_id, source_ids}</text>
+  <title>User Query — click for details</title>
+</g>
+
+<line x1="550" y1="740" x2="550" y2="778" class="arrow"/>
+
+<!-- Query rewrite node -->
+<g class="node" onclick="showPopup('rewrite-popup')" transform="translate(290,780)">
+  <rect width="520" height="70" class="c-query"/>
+  <text x="260" y="32" class="node-lbl" text-anchor="middle">Step 1 — Query Rewriting (_rewrite_query)</text>
+  <text x="260" y="50" class="node-sub" text-anchor="middle">Multi-turn: rewrites follow-up as self-contained query</text>
+  <text x="260" y="65" class="node-sub" text-anchor="middle">Uses conversation history · LLM call · fallback: raw question</text>
+  <title>Query Rewriting — click for details</title>
+</g>
+
+<line x1="550" y1="850" x2="550" y2="878" class="arrow"/>
+
+<!-- HyDE node -->
+<g class="node" onclick="showPopup('hyde-popup')" transform="translate(270,880)">
+  <rect width="560" height="80" class="c-hyde"/>
+  <text x="280" y="30" class="node-lbl" text-anchor="middle">Step 2 — HyDE Blending (RAG_USE_HYDE)</text>
+  <text x="280" y="49" class="node-sub" text-anchor="middle">Generates hypothetical answer → embed it → blend with raw query</text>
+  <text x="280" y="64" class="node-sub" text-anchor="middle">blended = 0.7 × raw_emb + 0.3 × hyde_emb  ·  then L2-normalise</text>
+  <text x="280" y="79" class="node-sub" text-anchor="middle">EmbeddingService called twice · LLM call · falls back to raw if unavailable</text>
+  <title>HyDE — click for details</title>
+</g>
+
+<line x1="550" y1="960" x2="550" y2="988" class="arrow"/>
+
+<!-- Vector search node -->
+<g class="node" onclick="showPopup('vsearch-popup')" transform="translate(290,990)">
+  <rect width="520" height="70" class="c-store"/>
+  <text x="260" y="30" class="node-lbl" text-anchor="middle">Step 3 — Vector Search (VectorStore.search)</text>
+  <text x="260" y="48" class="node-sub" text-anchor="middle">Cosine distance · top_k=8 candidates · filter by source_ids if specified</text>
+  <text x="260" y="63" class="node-sub" text-anchor="middle">pgvector CosineDistance operator · DocumentChunk.select_related(document__source)</text>
+  <title>Vector Search — click for details</title>
+</g>
+
+<line x1="550" y1="1060" x2="550" y2="1088" class="arrow"/>
+
+<!-- CRAG node -->
+<g class="node" onclick="showPopup('crag-popup')" transform="translate(270,1090)">
+  <rect width="560" height="80" class="c-crag"/>
+  <text x="280" y="30" class="node-lbl" text-anchor="middle">Step 4 — CRAG Grading (RAG_USE_CRAG)</text>
+  <text x="280" y="49" class="node-sub" text-anchor="middle">LLM scores each chunk 0.0–1.0 in one batched call</text>
+  <text x="280" y="64" class="node-sub" text-anchor="middle">Keep chunks ≥ RAG_CRAG_THRESHOLD (0.6) · confidence: high/low/none</text>
+  <text x="280" y="79" class="node-sub" text-anchor="middle">Fail-open: parse error → all chunks pass · "none" → early exit, no LLM call</text>
+  <title>CRAG Grading — click for details</title>
+</g>
+
+<line x1="550" y1="1170" x2="550" y2="1198" class="arrow"/>
+
+<!-- Context assembly node -->
+<g class="node" onclick="showPopup('ctx-popup')" transform="translate(310,1200)">
+  <rect width="480" height="70" class="c-llm"/>
+  <text x="240" y="30" class="node-lbl" text-anchor="middle">Step 5 — Context Assembly (_build_messages)</text>
+  <text x="240" y="48" class="node-sub" text-anchor="middle">Formats chunks as [Heading](citation_url)\ncontent blocks</text>
+  <text x="240" y="63" class="node-sub" text-anchor="middle">Prepends system prompt + conversation history</text>
+  <title>Context Assembly — click for details</title>
+</g>
+
+<line x1="550" y1="1270" x2="550" y2="1298" class="arrow"/>
+
+<!-- LLM generation node -->
+<g class="node" onclick="showPopup('llm-popup')" transform="translate(290,1300)">
+  <rect width="520" height="70" class="c-llm"/>
+  <text x="260" y="30" class="node-lbl" text-anchor="middle">Step 6 — LLM Generation (LLMClient.chat)</text>
+  <text x="260" y="48" class="node-sub" text-anchor="middle">Any OpenAI-compatible API · LLM_API_BASE_URL / LLM_MODEL_NAME</text>
+  <text x="260" y="63" class="node-sub" text-anchor="middle">Strictly grounded — "answer from context only"</text>
+  <title>LLM Generation — click for details</title>
+</g>
+
+<line x1="550" y1="1370" x2="550" y2="1398" class="arrow"/>
+
+<!-- Response node -->
+<g class="node" onclick="showPopup('resp-popup')" transform="translate(290,1400)">
+  <rect width="520" height="60" class="c-response"/>
+  <text x="260" y="28" class="node-lbl" text-anchor="middle">RAGResponse → JSON API Response</text>
+  <text x="260" y="44" class="node-sub" text-anchor="middle">{answer, sources[{title,snippet,citation_url,source_type}], confidence, conversation_id}</text>
+  <text x="260" y="58" class="node-sub" text-anchor="middle">Conversation + Messages persisted to DB</text>
+  <title>Response — click for details</title>
+</g>
+
+<!-- ════════════════════════════════════════════════ POPUPS ══════════ -->
+
+<!-- URL Popup -->
+<g id="url-popup" display="none">
+  <rect x="100" y="100" width="900" height="320" class="popup-bg" rx="10" ry="10"/>
+  <text x="135" y="132" class="popup-title">URL Ingestion — url_ingestion.py</text>
+  <text x="900" y="132" class="popup-close" onclick="hidePopup('url-popup')">✕</text>
+  <text x="135" y="155" class="popup-file">backend/api_support/services/url_ingestion.py · URLIngestionService.ingest_url()</text>
+  <text x="135" y="180" class="popup-body">Process: BFS web crawl from seed URL → fetch each page with httpx → parse HTML</text>
+  <text x="135" y="198" class="popup-body">Text extraction: trafilatura.extract() for full content (emails, phones, links, addresses)</text>
+  <text x="135" y="216" class="popup-body">Structure: BeautifulSoup detects h1/h2/h3 headings → chunk text at heading boundaries</text>
+  <text x="135" y="234" class="popup-body">Citation URL: text fragment (#:~:text=first-sentence) for precise browser highlighting</text>
+  <text x="135" y="260" class="popup-body">Config knobs:</text>
+  <text x="155" y="278" class="popup-key">URL_CRAWL_DEFAULT_DEPTH=2    # BFS depth (increase for deeper sites)</text>
+  <text x="155" y="296" class="popup-key">max_pages=50                  # hard limit (passed from IngestURLView)</text>
+  <text x="135" y="318" class="popup-body">⚠  Does NOT execute JavaScript. SPAs (React/Vue/Next) may have incomplete content.</text>
+  <text x="135" y="336" class="popup-body">   For JS-rendered sites, consider a Playwright-based crawler as a future enhancement.</text>
+  <text x="135" y="354" class="popup-body">Rate limiting: 0.5 s per request (hardcoded). Change in ingest_url() around line 144.</text>
+  <text x="135" y="380" class="popup-body">Modify chunking: change soup.find_all(["h1","h2","h3"]) in _split_by_headings() to add h4/h5.</text>
+</g>
+
+<!-- PDF Popup -->
+<g id="pdf-popup" display="none">
+  <rect x="100" y="100" width="900" height="280" class="popup-bg" rx="10" ry="10"/>
+  <text x="135" y="132" class="popup-title">PDF Ingestion — pdf_ingestion.py</text>
+  <text x="900" y="132" class="popup-close" onclick="hidePopup('pdf-popup')">✕</text>
+  <text x="135" y="155" class="popup-file">backend/api_support/services/pdf_ingestion.py · PDFIngestionService.ingest_pdf()</text>
+  <text x="135" y="178" class="popup-body">Process: PyPDF page-by-page text extraction → short pages (&lt;200 chars) merged with next</text>
+  <text x="135" y="196" class="popup-body">One DocumentChunk per (merged) page. Citation URL: /media/uploads/file.pdf#page=N</text>
+  <text x="135" y="222" class="popup-body">Limitations: no OCR (scanned PDFs yield empty text), no table structure extraction</text>
+  <text x="135" y="248" class="popup-body">Modify merge threshold: change "200" constant in short-page merging logic.</text>
+  <text x="135" y="266" class="popup-body">Switch to fixed-size chunking: replace page loop with sliding-window splitter.</text>
+  <text x="135" y="292" class="popup-body">Upload endpoint: POST /api/sources/ingest/file/ with multipart/form-data (file field)</text>
+  <text x="135" y="310" class="popup-body">Files stored in: backend/media/uploads/</text>
+  <text x="135" y="350" class="popup-body">⚠  Scanned PDF pages → empty chunks → not indexed. Use text-layer PDFs.</text>
+</g>
+
+<!-- Markdown Popup -->
+<g id="md-popup" display="none">
+  <rect x="100" y="100" width="900" height="240" class="popup-bg" rx="10" ry="10"/>
+  <text x="135" y="132" class="popup-title">Markdown Ingestion — markdown_ingestion.py</text>
+  <text x="900" y="132" class="popup-close" onclick="hidePopup('md-popup')">✕</text>
+  <text x="135" y="155" class="popup-file">backend/api_support/services/markdown_ingestion.py · MarkdownIngestionService.ingest_markdown()</text>
+  <text x="135" y="178" class="popup-body">Process: Split .md file at ## heading boundaries. Each section = one chunk.</text>
+  <text x="135" y="196" class="popup-body">Citation URL: #anchor-slug (anchor link to heading in the rendered file)</text>
+  <text x="135" y="222" class="popup-body">Modify to split at ### : add "### " pattern to the heading regex.</text>
+  <text x="135" y="248" class="popup-body">Upload endpoint: POST /api/sources/ingest/file/ with multipart/form-data (file field)</text>
+  <text x="135" y="274" class="popup-body">Good for: API docs, knowledge base articles, README files, changelogs.</text>
+  <text x="135" y="302" class="popup-body">Limitation: level-1 (#) headings are not currently used as chunk boundaries.</text>
+</g>
+
+<!-- JSON Popup -->
+<g id="json-popup" display="none">
+  <rect x="100" y="100" width="900" height="240" class="popup-bg" rx="10" ry="10"/>
+  <text x="135" y="132" class="popup-title">JSON Ingestion — ingestion.py (legacy)</text>
+  <text x="900" y="132" class="popup-close" onclick="hidePopup('json-popup')">✕</text>
+  <text x="135" y="155" class="popup-file">backend/api_support/services/ingestion.py · IngestionService.ingest_documents()</text>
+  <text x="135" y="178" class="popup-body">Accepts: JSON array [{title, content}, ...] via POST /api/docs/ingest/</text>
+  <text x="135" y="196" class="popup-body">Chunking: simple paragraph split (~500 tokens). Minimal metadata, no citation URL.</text>
+  <text x="135" y="222" class="popup-body">Legacy: does not use Source model grouping. Prefer URL/PDF/Markdown for new sources.</text>
+  <text x="135" y="248" class="popup-body">Use case: bulk import of FAQ pairs, product specs, or structured support articles.</text>
+  <text x="135" y="274" class="popup-body">CLI ingestion: python manage.py ingest_docs path/to/docs.json</text>
+</g>
+
+<!-- Chunking Popup -->
+<g id="chunk-popup" display="none">
+  <rect x="100" y="200" width="900" height="280" class="popup-bg" rx="10" ry="10"/>
+  <text x="135" y="232" class="popup-title">Text Chunking Strategy</text>
+  <text x="900" y="232" class="popup-close" onclick="hidePopup('chunk-popup')">✕</text>
+  <text x="135" y="258" class="popup-body">URL:  trafilatura full-text + BeautifulSoup h1/h2/h3 heading boundaries</text>
+  <text x="135" y="276" class="popup-body">PDF:  one chunk per page (short pages merged). No fixed-size splitting.</text>
+  <text x="135" y="294" class="popup-body">MD:   split at ## level-2 headings. Each section = one DocumentChunk.</text>
+  <text x="135" y="312" class="popup-body">JSON: paragraph split at blank lines, max ~500 tokens per chunk.</text>
+  <text x="135" y="338" class="popup-body">All types produce: (title: str, content: str, metadata: dict) tuples</text>
+  <text x="135" y="356" class="popup-body">passed to BaseIngestionService._embed_and_store(source, chunks)</text>
+  <text x="135" y="382" class="popup-body">To change chunk granularity: modify the respective ingestion service file.</text>
+  <text x="135" y="400" class="popup-body">See SYSTEM_DOCUMENTATION.md §10.4 for step-by-step chunking modification guide.</text>
+  <text x="135" y="432" class="popup-body">⚠  After changing chunking, re-ingest all affected sources for changes to take effect.</text>
+  <text x="135" y="450" class="popup-body">   Delete source via UI or DB, then re-add it.</text>
+</g>
+
+<!-- Base ingestion Popup -->
+<g id="base-popup" display="none">
+  <rect x="100" y="350" width="900" height="220" class="popup-bg" rx="10" ry="10"/>
+  <text x="135" y="382" class="popup-title">BaseIngestionService._embed_and_store()</text>
+  <text x="900" y="382" class="popup-close" onclick="hidePopup('base-popup')">✕</text>
+  <text x="135" y="405" class="popup-file">backend/api_support/services/base_ingestion.py</text>
+  <text x="135" y="428" class="popup-body">1. Groups consecutive chunks by title → creates one Document record per unique title</text>
+  <text x="135" y="446" class="popup-body">2. Calls EmbeddingService.get_embedding(content) for every chunk</text>
+  <text x="135" y="464" class="popup-body">3. Calls VectorStore.upsert_chunks() — bulk_create DocumentChunk rows</text>
+  <text x="135" y="490" class="popup-body">Returns IngestionResult(source_id, documents_created, chunks_created)</text>
+  <text x="135" y="508" class="popup-body">Shared by: URL, PDF, and Markdown ingestion services.</text>
+  <text x="135" y="534" class="popup-body">⚠  Grouping is by exact title string match — duplicate headings across pages share a Document.</text>
+</g>
+
+<!-- Embedding Popup -->
+<g id="embed-popup" display="none">
+  <rect x="100" y="460" width="900" height="300" class="popup-bg" rx="10" ry="10"/>
+  <text x="135" y="492" class="popup-title">EmbeddingService — embedding.py</text>
+  <text x="900" y="492" class="popup-close" onclick="hidePopup('embed-popup')">✕</text>
+  <text x="135" y="515" class="popup-file">backend/api_support/services/embedding.py</text>
+  <text x="135" y="538" class="popup-body">Backends: "local" (SentenceTransformer in-process) or "openai" (HTTP API)</text>
+  <text x="135" y="562" class="popup-body">Dimension adaptation: pad with zeros or truncate to match VECTOR_DIMENSIONS</text>
+  <text x="135" y="586" class="popup-body">Config (env vars):</text>
+  <text x="155" y="604" class="popup-key">EMBEDDING_BACKEND=local          # "local" or "openai"</text>
+  <text x="155" y="622" class="popup-key">EMBEDDING_MODEL_NAME=nomic-embed-text</text>
+  <text x="155" y="640" class="popup-key">VECTOR_DIMENSIONS=768            # must match DB schema</text>
+  <text x="155" y="658" class="popup-key">LLM_API_KEY=...                  # only for openai backend</text>
+  <text x="155" y="676" class="popup-key">LLM_API_BASE_URL=https://api.openai.com/v1</text>
+  <text x="135" y="700" class="popup-body">To change model: see SYSTEM_DOCUMENTATION.md §10.1 — requires migration + re-ingest.</text>
+  <text x="135" y="718" class="popup-body">Common models: nomic-embed-text(768), bge-small-en(384), text-embedding-3-small(1536)</text>
+  <text x="135" y="744" class="popup-body">⚠  Changing model without migration → dimension mismatch → VectorStore insert fails.</text>
+</g>
+
+<!-- Vector Store Popup -->
+<g id="store-popup" display="none">
+  <rect x="100" y="550" width="900" height="240" class="popup-bg" rx="10" ry="10"/>
+  <text x="135" y="582" class="popup-title">VectorStore — vector_store.py</text>
+  <text x="900" y="582" class="popup-close" onclick="hidePopup('store-popup')">✕</text>
+  <text x="135" y="605" class="popup-file">backend/api_support/services/vector_store.py</text>
+  <text x="135" y="628" class="popup-body">upsert_chunks(): bulk_create DocumentChunk rows with embedding vectors</text>
+  <text x="135" y="646" class="popup-body">search(): cosine distance via pgvector CosineDistance operator → top_k results</text>
+  <text x="135" y="670" class="popup-body">DB schema: DocumentChunk.embedding = VectorField(dimensions=768)</text>
+  <text x="135" y="688" class="popup-body">Filter by source_ids: WHERE document__source_id IN (...) — respects UI source selector</text>
+  <text x="135" y="712" class="popup-body">To change dimensions: run a migration + re-ingest all sources (see §10.1 in docs)</text>
+  <text x="135" y="730" class="popup-body">Index type: pgvector default (exact search). For production scale add ivfflat or hnsw index.</text>
+  <text x="135" y="756" class="popup-body">⚠  No deduplication — re-ingesting the same URL creates duplicate chunks.</text>
+  <text x="135" y="774" class="popup-body">   Always delete the existing source before re-ingesting.</text>
+</g>
+
+<!-- User Query Popup -->
+<g id="userq-popup" display="none">
+  <rect x="100" y="650" width="900" height="200" class="popup-bg" rx="10" ry="10"/>
+  <text x="135" y="682" class="popup-title">User Query — ChatView (views.py)</text>
+  <text x="900" y="682" class="popup-close" onclick="hidePopup('userq-popup')">✕</text>
+  <text x="135" y="705" class="popup-file">backend/api_support/views.py · ChatView · POST /api/chat/</text>
+  <text x="135" y="728" class="popup-body">Request: {query: str, conversation_id: int|null, source_ids: int[]}</text>
+  <text x="135" y="746" class="popup-body">Response: {answer, confidence: high|low|none, sources[], conversation_id}</text>
+  <text x="135" y="770" class="popup-body">source_ids: if empty list → search all sources. If specified → filter to those sources only.</text>
+  <text x="135" y="788" class="popup-body">conversation_id: null for new conversation, existing ID for multi-turn follow-up.</text>
+  <text x="135" y="812" class="popup-body">Frontend sends from: backend/static/js/chat.js · chatForm submit handler</text>
+  <text x="135" y="830" class="popup-body">CSRF protection: X-CSRFToken header from cookie.</text>
+</g>
+
+<!-- Query Rewrite Popup -->
+<g id="rewrite-popup" display="none">
+  <rect x="100" y="750" width="900" height="220" class="popup-bg" rx="10" ry="10"/>
+  <text x="135" y="782" class="popup-title">Query Rewriting — _rewrite_query()</text>
+  <text x="900" y="782" class="popup-close" onclick="hidePopup('rewrite-popup')">✕</text>
+  <text x="135" y="805" class="popup-file">rag_pipeline.py lines ~39–62</text>
+  <text x="135" y="828" class="popup-body">Goal: convert follow-up questions into self-contained queries for accurate embedding.</text>
+  <text x="135" y="846" class="popup-body">Example: "What about his email?" → "What is Pavitra's email address?"</text>
+  <text x="135" y="870" class="popup-body">Skipped if no conversation history exists (first message in conversation).</text>
+  <text x="135" y="888" class="popup-body">LLM prompt: system instructs to rewrite, appends history + follow-up, temperature=0.0</text>
+  <text x="135" y="912" class="popup-body">Fallback: if LLM unavailable → use original question unchanged.</text>
+  <text x="135" y="930" class="popup-body">Modify: change the system/user prompt in _rewrite_query() to adjust rewriting style.</text>
+  <text x="135" y="948" class="popup-body">Disable: pass an empty history [] or refactor answer() to skip this step.</text>
+</g>
+
+<!-- HyDE Popup -->
+<g id="hyde-popup" display="none">
+  <rect x="100" y="850" width="900" height="280" class="popup-bg" rx="10" ry="10"/>
+  <text x="135" y="882" class="popup-title">HyDE — Hypothetical Document Embeddings</text>
+  <text x="900" y="882" class="popup-close" onclick="hidePopup('hyde-popup')">✕</text>
+  <text x="135" y="905" class="popup-file">rag_pipeline.py lines ~64–82, ~199–207  ·  Controlled by: RAG_USE_HYDE</text>
+  <text x="135" y="928" class="popup-body">Problem: query "contact info" ≠ stored text "Email: x@y.com". Embeddings don't match well.</text>
+  <text x="135" y="946" class="popup-body">Solution: LLM generates a hypothetical answer → embed that → blend with raw query.</text>
+  <text x="135" y="970" class="popup-body">Blend: blended = 0.7 × embed(query) + 0.3 × embed(hypothetical_answer)</text>
+  <text x="135" y="988" class="popup-body">Then L2-normalise: blended / ||blended||</text>
+  <text x="135" y="1012" class="popup-body">Config:</text>
+  <text x="155" y="1030" class="popup-key">RAG_USE_HYDE=True     # set False to disable (faster, may miss semantic gaps)</text>
+  <text x="135" y="1054" class="popup-body">Tune blend ratio: change 0.7/0.3 in answer() (~line 203) — more HyDE for creative queries.</text>
+  <text x="135" y="1072" class="popup-body">Tune system prompt: _HYDE_SYSTEM / _HYDE_USER — match persona to your domain.</text>
+  <text x="135" y="1096" class="popup-body">⚠  Pure HyDE (1.0 weight) can hallucinate and pull embedding far from actual query.</text>
+  <text x="135" y="1114" class="popup-body">   Always keep raw query weight ≥ 0.5.</text>
+</g>
+
+<!-- Vector Search Popup -->
+<g id="vsearch-popup" display="none">
+  <rect x="100" y="960" width="900" height="240" class="popup-bg" rx="10" ry="10"/>
+  <text x="135" y="992" class="popup-title">Vector Search — VectorStore.search()</text>
+  <text x="900" y="992" class="popup-close" onclick="hidePopup('vsearch-popup')">✕</text>
+  <text x="135" y="1015" class="popup-file">vector_store.py · search()  ·  rag_pipeline.py answer() ~line 210</text>
+  <text x="135" y="1038" class="popup-body">Algorithm: cosine distance on pgvector VectorField — exact nearest neighbour search.</text>
+  <text x="135" y="1056" class="popup-body">Returns top_k DocumentChunk objects with related document + source pre-fetched.</text>
+  <text x="135" y="1080" class="popup-body">Tune top_k: change default in RAGPipeline.answer(top_k=8). Higher → more CRAG candidates.</text>
+  <text x="135" y="1098" class="popup-body">source_ids filter: applied as WHERE clause. None → all sources searched.</text>
+  <text x="135" y="1122" class="popup-body">Scaling: for large collections (&gt;100k chunks) add pgvector ivfflat/hnsw index for speed.</text>
+  <text x="135" y="1140" class="popup-body">   CREATE INDEX ON api_support_documentchunk USING ivfflat (embedding vector_cosine_ops);</text>
+  <text x="135" y="1164" class="popup-body">⚠  Cosine distance requires normalised vectors. EmbeddingService normalises local embeddings.</text>
+  <text x="135" y="1182" class="popup-body">   OpenAI embeddings are pre-normalised; local SentenceTransformers normalised at encode time.</text>
+</g>
+
+<!-- CRAG Popup -->
+<g id="crag-popup" display="none">
+  <rect x="100" y="1060" width="900" height="300" class="popup-bg" rx="10" ry="10"/>
+  <text x="135" y="1092" class="popup-title">CRAG — Corrective RAG Grading</text>
+  <text x="900" y="1092" class="popup-close" onclick="hidePopup('crag-popup')">✕</text>
+  <text x="135" y="1115" class="popup-file">rag_pipeline.py · _grade_chunks() / _crag_filter()  ·  lines ~97–134</text>
+  <text x="135" y="1138" class="popup-body">Purpose: filter vector-search results to remove irrelevant chunks before sending to LLM.</text>
+  <text x="135" y="1156" class="popup-body">Method: one LLM call scores all top_k chunks 0.0–1.0. Expects JSON float array response.</text>
+  <text x="135" y="1174" class="popup-body">Confidence output: "high" (all pass), "low" (partial pass), "none" (all filtered → no LLM call)</text>
+  <text x="135" y="1198" class="popup-body">Config:</text>
+  <text x="155" y="1216" class="popup-key">RAG_USE_CRAG=True              # set False to skip grading</text>
+  <text x="155" y="1234" class="popup-key">RAG_CRAG_THRESHOLD=0.6         # 0.0=keep all, 1.0=keep only perfect</text>
+  <text x="135" y="1258" class="popup-body">Lower threshold (e.g. 0.4) → recall ↑, precision ↓ (more noise in LLM context)</text>
+  <text x="135" y="1276" class="popup-body">Higher threshold (e.g. 0.8) → precision ↑, recall ↓ (risk of "no information" responses)</text>
+  <text x="135" y="1300" class="popup-body">Modify the grading prompt: _CRAG_BATCH_PROMPT in rag_pipeline.py</text>
+  <text x="135" y="1318" class="popup-body">⚠  Fail-open: if LLM returns malformed JSON → all chunks pass through.</text>
+  <text x="135" y="1336" class="popup-body">   Smaller quantised models sometimes fail JSON output; lower confidence for them.</text>
+</g>
+
+<!-- Context Assembly Popup -->
+<g id="ctx-popup" display="none">
+  <rect x="100" y="1170" width="900" height="220" class="popup-bg" rx="10" ry="10"/>
+  <text x="135" y="1202" class="popup-title">Context Assembly — _build_messages()</text>
+  <text x="900" y="1202" class="popup-close" onclick="hidePopup('ctx-popup')">✕</text>
+  <text x="135" y="1225" class="popup-file">rag_pipeline.py · _build_messages() / _build_system_prompt() · lines ~138–172</text>
+  <text x="135" y="1248" class="popup-body">System prompt: "grounded RAG assistant — answer strictly from context"</text>
+  <text x="135" y="1266" class="popup-body">Context blocks: [Heading](citation_url)\ncontent — one per passing chunk, "---" separated</text>
+  <text x="135" y="1284" class="popup-body">User prompt: Context: {blocks}\n\nQuestion: {question}\n\nAnswer strictly from the context above.</text>
+  <text x="135" y="1308" class="popup-body">Modify system prompt: change _build_system_prompt() — add domain/tone specifics.</text>
+  <text x="135" y="1326" class="popup-body">Conversation history: all prior messages prepended before user prompt.</text>
+  <text x="135" y="1350" class="popup-body">To add citations in the answer: modify the system prompt to instruct the LLM to cite [1],[2].</text>
+  <text x="135" y="1368" class="popup-body">See SYSTEM_DOCUMENTATION.md §10.5 for full prompt customisation guide.</text>
+</g>
+
+<!-- LLM Popup -->
+<g id="llm-popup" display="none">
+  <rect x="100" y="1270" width="900" height="240" class="popup-bg" rx="10" ry="10"/>
+  <text x="135" y="1302" class="popup-title">LLM Client — llm_client.py</text>
+  <text x="900" y="1302" class="popup-close" onclick="hidePopup('llm-popup')">✕</text>
+  <text x="135" y="1325" class="popup-file">backend/api_support/services/llm_client.py · LLMClient.chat()</text>
+  <text x="135" y="1348" class="popup-body">Protocol: OpenAI-compatible /chat/completions API endpoint.</text>
+  <text x="135" y="1366" class="popup-body">Used for: query rewriting · HyDE generation · CRAG grading · final answer</text>
+  <text x="135" y="1390" class="popup-body">Config (env vars):</text>
+  <text x="155" y="1408" class="popup-key">LLM_API_BASE_URL=http://localhost:11434/v1   # Ollama / LM Studio / OpenAI</text>
+  <text x="155" y="1426" class="popup-key">LLM_MODEL_NAME=llama3.2                      # any model on the server</text>
+  <text x="155" y="1444" class="popup-key">LLM_API_KEY=ollama                           # Ollama ignores this; set for OpenAI</text>
+  <text x="135" y="1468" class="popup-body">Raises LLMUnavailableError on network failure → all callers have graceful fallbacks.</text>
+  <text x="135" y="1486" class="popup-body">No code changes needed to switch models — only env var changes.</text>
+</g>
+
+<!-- Response Popup -->
+<g id="resp-popup" display="none">
+  <rect x="100" y="1370" width="900" height="220" class="popup-bg" rx="10" ry="10"/>
+  <text x="135" y="1402" class="popup-title">API Response — RAGResponse → JSON</text>
+  <text x="900" y="1402" class="popup-close" onclick="hidePopup('resp-popup')">✕</text>
+  <text x="135" y="1425" class="popup-file">rag_pipeline.py · RAGResponse dataclass · views.py ChatView serialisation</text>
+  <text x="135" y="1448" class="popup-body">Fields: answer, confidence (high/low/none), conversation_id, sources[]</text>
+  <text x="135" y="1466" class="popup-body">Sources include: document_title, snippet (300 chars), citation_url, source_type, source_origin</text>
+  <text x="135" y="1490" class="popup-body">Persistence: Message(user) + Message(assistant) saved to Conversation after response.</text>
+  <text x="135" y="1508" class="popup-body">Frontend: marked.parse(answer) renders Markdown. Citations auto-expanded with source badges.</text>
+  <text x="135" y="1532" class="popup-body">confidence="none": pipeline skips LLM call entirely — returns "I don't have this information."</text>
+  <text x="135" y="1550" class="popup-body">To add more fields to sources: modify the sources list building in RAGPipeline.answer() ~line 248.</text>
+</g>
+
+<!-- ══════════════════════════════════════════════ LEGEND ════════════ -->
+<rect x="20" y="1460" width="1060" height="15" fill="#0d1016"/>
+<text x="40" y="1472" fill="#7b82a6" font-size="9">● Teal = Ingestion  ● Purple = Embedding  ● Blue = Vector Store  ● Orange = Query  ● Pink = HyDE  ● Green = CRAG  ● Red = LLM  ● Indigo = Response  · Click any node to expand detail</text>
+
+<!-- ══════════════════════════════════════════ SCRIPT ═══════════════ -->
+<script type="text/javascript"><![CDATA[
+  function showPopup(id) {
+    // Hide all popups first
+    var all = document.querySelectorAll('[id$="-popup"]');
+    all.forEach(function(el) { el.setAttribute('display', 'none'); });
+    // Show the target
+    var el = document.getElementById(id);
+    if (el) el.setAttribute('display', 'inline');
+  }
+  function hidePopup(id) {
+    var el = document.getElementById(id);
+    if (el) el.setAttribute('display', 'none');
+  }
+  // Click outside popup to close
+  document.addEventListener('click', function(e) {
+    var target = e.target;
+    // If click is on a node (has onclick with showPopup) or close button, ignore
+    if (target.closest && target.closest('.node')) return;
+    if (target.getAttribute && target.getAttribute('onclick') && target.getAttribute('onclick').startsWith('hide')) return;
+    // Close all popups if click is not on a popup rect or its children
+    var inPopup = false;
+    var allPopups = document.querySelectorAll('[id$="-popup"]');
+    allPopups.forEach(function(p) {
+      if (p.contains(target)) inPopup = true;
+    });
+    if (!inPopup) {
+      allPopups.forEach(function(p) { p.setAttribute('display', 'none'); });
+    }
+  });
+]]></script>
+
+</svg>

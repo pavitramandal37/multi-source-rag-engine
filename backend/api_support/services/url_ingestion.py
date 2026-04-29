@@ -35,51 +35,68 @@ class URLIngestionService(BaseIngestionService):
         return f"{page_url}#:~:text={encoded}"
 
     def _split_by_headings(self, html: str, base_url: str) -> List[Tuple[str, str, Dict]]:
-        """Split HTML content at h1/h2/h3 boundaries into (title, content, metadata) tuples."""
-        soup = BeautifulSoup(html, "html.parser")
-        body = soup.find("body") or soup
+        """Split page into (title, content, metadata) tuples using trafilatura for text
+        extraction and BeautifulSoup only for heading boundary detection.
 
-        # Derive initial heading from <title>
+        trafilatura captures all visible text including emails, phone numbers, addresses,
+        and link text that a tag-whitelist approach would miss.
+        """
+        soup = BeautifulSoup(html, "html.parser")
         title_tag = soup.find("title")
-        current_heading = title_tag.get_text(strip=True) if title_tag else base_url
-        current_paragraphs: List[str] = []
+        page_title = title_tag.get_text(strip=True) if title_tag else base_url
+
+        # Primary extraction: use trafilatura which handles arbitrary HTML structures
+        full_text = trafilatura.extract(
+            html,
+            include_comments=False,
+            include_tables=True,
+            include_links=True,
+            no_fallback=False,
+        ) or ""
+
+        # Collect heading texts in document order to use as split boundaries
+        headings: List[str] = []
+        for tag in soup.find_all(["h1", "h2", "h3"]):
+            text = tag.get_text(strip=True)
+            if text:
+                headings.append(text)
+
         chunks: List[Tuple[str, str, Dict]] = []
 
-        def flush(heading: str, paragraphs: List[str]) -> None:
-            if not paragraphs:
+        def _make_chunk(heading: str, text: str) -> None:
+            text = text.strip()
+            if not text:
                 return
-            section_text = "\n\n".join(paragraphs)
             anchor = self._slugify(heading)
-            citation_url = self._text_fragment(section_text, base_url)
+            citation_url = self._text_fragment(text, base_url)
             meta: Dict = {
                 "source_url": base_url,
                 "heading": heading,
                 "anchor": anchor,
                 "citation_url": citation_url,
             }
-            chunks.append((heading, section_text, meta))
+            chunks.append((heading, text, meta))
 
-        for tag in body.descendants:
-            if not hasattr(tag, "name") or tag.name is None:
-                continue
-            if tag.name in ("h1", "h2", "h3"):
-                flush(current_heading, current_paragraphs)
-                current_paragraphs = []
-                current_heading = tag.get_text(strip=True)
-            elif tag.name in ("p", "li", "td", "pre", "blockquote"):
-                text = tag.get_text(strip=True)
-                if text:
-                    current_paragraphs.append(text)
+        if full_text and headings:
+            # Split the trafilatura text on heading boundaries
+            remaining = full_text
+            current_heading = page_title
+            for heading in headings:
+                parts = remaining.split(heading, 1)
+                if len(parts) == 2:
+                    _make_chunk(current_heading, parts[0])
+                    remaining = parts[1]
+                    current_heading = heading
+            _make_chunk(current_heading, remaining)
+        elif full_text:
+            # No headings found — treat the whole page as one chunk
+            _make_chunk(page_title, full_text)
 
-        flush(current_heading, current_paragraphs)
-
-        # Fallback: whole page as one chunk if no structure found
         if not chunks:
-            text = trafilatura.extract(html, include_comments=False, include_tables=True) or \
-                   soup.get_text(separator="\n", strip=True)
-            page_title = title_tag.get_text(strip=True) if title_tag else base_url
-            meta = {"source_url": base_url, "citation_url": base_url}
-            chunks.append((page_title, text, meta))
+            # Last-resort fallback: raw BeautifulSoup text extraction
+            raw = soup.get_text(separator="\n", strip=True)
+            if raw:
+                _make_chunk(page_title, raw)
 
         return chunks
 

@@ -196,65 +196,137 @@ a:hover { color: var(--accent-hover); text-decoration: underline; }
 .message-body ul, .message-body ol { padding-left: 20px; margin-bottom: 8px; }
 .message-body h1,.message-body h2,.message-body h3 { margin: 10px 0 4px; font-size: 15px; }
 
-/* Citation chips */
+/* ── Citations ─────────────────────────────────────────────────────────────── */
+.citation-section { margin-top: 12px; }
+.citation-section-header {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
 .citation-bar {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 8px;
+  flex-direction: column;
+  gap: 8px;
 }
+.citation-wrapper { display: flex; flex-direction: column; }
+
 .citation-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   background: var(--surface-raised);
   border: 1px solid var(--border);
-  border-radius: 999px;
-  color: var(--accent);
-  font-size: 11px;
-  padding: 2px 10px;
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 500;
+  padding: 5px 10px;
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
+  text-align: left;
+  transition: border-color 0.15s, background 0.15s;
+  width: 100%;
 }
-.citation-chip:hover { background: var(--border); border-color: var(--accent); }
-.citation-chip[aria-expanded="true"] { border-color: var(--accent); }
+.citation-chip:hover { border-color: var(--accent); background: var(--border); }
+.citation-chip[aria-expanded="true"] { border-color: var(--accent); border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+.citation-chevron { margin-left: auto; font-size: 10px; color: var(--text-muted); }
+
+/* Source type dot badges */
+.src-badge {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 4px;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+.src-url  { background: rgba(108,140,244,0.2); color: var(--accent); }
+.src-pdf  { background: rgba(224,85,85,0.2);   color: var(--danger); }
+.src-md   { background: rgba(78,201,123,0.2);  color: var(--success); }
+.src-json { background: rgba(232,168,78,0.2);  color: var(--warning); }
 
 .citation-detail {
   background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border: 1px solid var(--accent);
+  border-top: none;
+  border-bottom-left-radius: 6px;
+  border-bottom-right-radius: 6px;
   padding: 10px 12px;
-  margin-top: 4px;
-  font-size: 12px;
-  color: var(--text-muted);
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.55;
 }
-.citation-detail .snippet { margin-bottom: 8px; font-style: italic; }
+.citation-detail.collapsed { display: none; }
+
+.citation-snippet {
+  margin-bottom: 8px;
+  border-left: 2px solid var(--accent);
+  padding-left: 8px;
+  color: var(--text);
+}
+.citation-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 6px;
+}
+.citation-origin {
+  font-size: 11px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .open-source-btn {
   font-size: 11px;
   font-weight: 600;
   color: var(--accent);
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 /* Chat input bar */
 .chat-input-bar {
   display: flex;
+  align-items: flex-end;
   gap: 8px;
   padding: 12px 20px 16px;
   border-top: 1px solid var(--border);
   background: var(--surface);
   flex-shrink: 0;
 }
-.query-input {
+.input-wrap {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.query-input {
   background: var(--surface-raised);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   color: var(--text);
   font-family: var(--font);
   font-size: 14px;
-  padding: 8px 12px;
+  padding: 10px 12px;
   resize: none;
   outline: none;
-  transition: border-color 0.15s;
+  min-height: 60px;
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
-.query-input:focus { border-color: var(--accent); }
+.query-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(108,140,244,0.15);
+}
+.input-hint {
+  font-size: 10px;
+  color: var(--text-muted);
+  padding-left: 2px;
+}
 .send-btn {
   background: var(--accent);
   border: none;
@@ -263,6 +335,7 @@ a:hover { color: var(--accent-hover); text-decoration: underline; }
   font-weight: 600;
   font-size: 13px;
   padding: 0 20px;
+  height: 60px;
   cursor: pointer;
   transition: background 0.15s;
   white-space: nowrap;
