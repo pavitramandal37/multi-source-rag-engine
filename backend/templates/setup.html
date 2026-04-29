@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block title %}{{ app_title }}{% endblock %}
+{% block nav_setup %}active{% endblock %}
+
+{% block content %}
+<div class="setup-layout">
+  <h1 class="page-title">{{ app_title }}</h1>
+  <p class="setup-intro">Follow these steps to run the full stack locally.</p>
+
+  <details class="setup-section" open>
+    <summary class="setup-summary">1. Prerequisites</summary>
+    <div class="setup-body">
+      <ul>
+        <li><strong>Docker Desktop</strong> — <a href="https://docs.docker.com/get-docker/" target="_blank" rel="noopener">docs.docker.com/get-docker</a></li>
+        <li><strong>Ollama</strong> — <a href="https://ollama.com/download" target="_blank" rel="noopener">ollama.com/download</a></li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="setup-section">
+    <summary class="setup-summary">2. Clone &amp; configure</summary>
+    <div class="setup-body">
+      <pre><code>git clone &lt;repo-url&gt;
+cd api-support-ai-chatbot
+cp env.example .env
+# Edit .env — the defaults work for local Ollama</code></pre>
+    </div>
+  </details>
+
+  <details class="setup-section">
+    <summary class="setup-summary">3. Pull Ollama models</summary>
+    <div class="setup-body">
+      <p>Run these <em>on the host</em> (not inside Docker):</p>
+      <pre><code>ollama pull llama3.2
+ollama pull nomic-embed-text</code></pre>
+      <p>The LLM is used for chat answers, query rewriting, HyDE, and CRAG grading.<br>
+         The embedding model converts text to vectors for search.<br>
+         <code>nomic-embed-text</code> outputs 768-dim vectors, padded to 1536 by the service.</p>
+    </div>
+  </details>
+
+  <details class="setup-section">
+    <summary class="setup-summary">4. Start the stack</summary>
+    <div class="setup-body">
+      <pre><code>docker compose up --build</code></pre>
+      <p>This starts the Django web server and the PostgreSQL + pgvector database.<br>
+         Migrations run automatically on first start.<br>
+         Visit <a href="/">http://localhost:8000</a> when you see <code>Starting development server</code>.</p>
+    </div>
+  </details>
+
+  <details class="setup-section">
+    <summary class="setup-summary">5. Add your first source</summary>
+    <div class="setup-body">
+      <p>Via the UI: go to the <a href="/sources/">Sources</a> page and use the URL, PDF, or Markdown tab.</p>
+      <p>Via curl (JSON ingest for bulk docs):</p>
+      <pre><code>curl -s -X POST http://localhost:8000/api/docs/ingest/ \
+  -H "Content-Type: application/json" \
+  -d '{
+    "source_name": "My Docs",
+    "docs": [{"title": "Hello", "content": "This is a test document."}]
+  }'</code></pre>
+    </div>
+  </details>
+
+  <details class="setup-section">
+    <summary class="setup-summary">6. RAG pipeline toggles</summary>
+    <div class="setup-body">
+      <p>Set these in <code>.env</code> and restart the container:</p>
+      <table class="setup-table">
+        <thead><tr><th>Variable</th><th>Default</th><th>Effect</th></tr></thead>
+        <tbody>
+          <tr><td><code>RAG_USE_HYDE</code></td><td>true</td><td>Embed a hypothetical answer instead of the raw query (better retrieval on content-heavy docs)</td></tr>
+          <tr><td><code>RAG_USE_CRAG</code></td><td>true</td><td>Grade retrieved chunks and discard irrelevant ones (prevents hallucination)</td></tr>
+          <tr><td><code>RAG_CRAG_THRESHOLD</code></td><td>0.6</td><td>Minimum relevance score to keep a chunk</td></tr>
+          <tr><td><code>URL_CRAWL_DEFAULT_DEPTH</code></td><td>2</td><td>How many levels deep the URL crawler follows links</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </details>
+
+  <details class="setup-section">
+    <summary class="setup-summary">7. Known limitations (v1)</summary>
+    <div class="setup-body">
+      <ul>
+        <li><strong>No streaming</strong> — answers arrive as one block. SSE support planned for v2.</li>
+        <li><strong>No embedding cache</strong> — re-ingesting the same URL re-embeds all chunks.</li>
+        <li><strong>URL crawler</strong> — rate-limited (0.5 s/page), capped at 50 pages per source.
+            Does <em>not</em> parse <code>robots.txt</code>. Use only on sites you own or have permission to crawl.</li>
+        <li><strong>No auth</strong> on ingest/delete endpoints — intended for localhost use only.</li>
+      </ul>
+    </div>
+  </details>
+
+</div>
+{% endblock %}

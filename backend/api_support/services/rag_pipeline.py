@@ -1,9 +1,12 @@
-from dataclasses import dataclass
+import json
+from dataclasses import dataclass, field
 from typing import Any, Dict, List, Sequence
+
+from django.conf import settings
 
 from api_support.models import Conversation, Message
 from api_support.services.embedding import EmbeddingService
-from api_support.services.llm_client import LLMClient
+from api_support.services.llm_client import LLMClient, LLMUnavailableError
 from api_support.services.vector_store import VectorStore
 
 
@@ -12,6 +15,7 @@ class RAGResponse:
     answer: str
     sources: List[Dict[str, Any]]
     conversation_id: int
+    confidence: str = "high"  # "high" | "low" | "none"
 
 
 class RAGPipeline:
@@ -24,67 +28,230 @@ class RAGPipeline:
         self.embedding_service = embedding_service or EmbeddingService()
         self.llm_client = llm_client or LLMClient()
         self.vector_store = vector_store or VectorStore()
+        self.use_hyde = getattr(settings, "RAG_USE_HYDE", True)
+        self.use_crag = getattr(settings, "RAG_USE_CRAG", True)
+        self.crag_threshold = getattr(settings, "RAG_CRAG_THRESHOLD", 0.6)
+
+    # ── Step 1: Query rewriting ───────────────────────────────────────────────
+
+    def _rewrite_query(self, question: str, history: List[Dict]) -> str:
+        """Rewrite a follow-up question as a self-contained query using conversation history."""
+        if not history:
+            return question
+        messages = [
+            {
+                "role": "system",
+                "content": (
+                    "Given a conversation history and a follow-up question, "
+                    "rewrite the follow-up as a self-contained question that "
+                    "can be understood without the conversation history. "
+                    "Output ONLY the rewritten question, nothing else."
+                ),
+            },
+            *history,
+            {
+                "role": "user",
+                "content": f"Follow-up question: {question}\n\nRewritten standalone question:",
+            },
+        ]
+        try:
+            return self.llm_client.chat(messages, temperature=0.0).strip() or question
+        except LLMUnavailableError:
+            return question  # fall back to the original question
+
+    # ── Step 2: HyDE ─────────────────────────────────────────────────────────
+
+    _HYDE_SYSTEM = "You are a technical documentation writer."
+    _HYDE_USER = (
+        "Write a concise 2-3 sentence answer to the following question as if "
+        "you were reading it from a documentation page. "
+        "Focus on technical accuracy. Output ONLY the hypothetical answer, no preamble.\n\n"
+        "Question: {question}"
+    )
+
+    def _hypothetical_answer(self, question: str) -> str:
+        messages = [
+            {"role": "system", "content": self._HYDE_SYSTEM},
+            {"role": "user", "content": self._HYDE_USER.format(question=question)},
+        ]
+        try:
+            return self.llm_client.chat(messages, temperature=0.3).strip() or question
+        except LLMUnavailableError:
+            return question  # fall back: embed the raw query instead
+
+    # ── Step 3: Batched CRAG grading ─────────────────────────────────────────
+
+    _CRAG_BATCH_PROMPT = (
+        "You are grading document chunks for relevance to a query.\n"
+        "Query: {query}\n\n"
+        "Chunks (numbered):\n"
+        "{numbered_chunks}\n\n"
+        "Respond with ONLY a JSON array of floats, one per chunk "
+        "(1.0 = perfectly relevant, 0.0 = completely irrelevant).\n"
+        "Example for 3 chunks: [0.9, 0.1, 0.7]\n"
+        "No explanation, just the array."
+    )
+
+    def _grade_chunks(self, query: str, chunks: Sequence) -> List[float]:
+        """Return a relevance score 0.0–1.0 for each chunk in one LLM call."""
+        numbered = "\n".join(
+            f"{i + 1}. {c.content[:400]}" for i, c in enumerate(chunks)
+        )
+        messages = [
+            {
+                "role": "user",
+                "content": self._CRAG_BATCH_PROMPT.format(
+                    query=query, numbered_chunks=numbered
+                ),
+            }
+        ]
+        raw = self.llm_client.chat(messages, temperature=0.0).strip()
+        try:
+            scores = json.loads(raw)
+            if isinstance(scores, list) and len(scores) == len(chunks):
+                return [max(0.0, min(1.0, float(s))) for s in scores]
+        except (json.JSONDecodeError, ValueError, TypeError):
+            pass
+        except LLMUnavailableError:
+            pass
+        # Parse failure or LLM unavailable → neutral scores (keep all chunks)
+        return [0.5] * len(chunks)
+
+    def _crag_filter(self, query: str, chunks: Sequence) -> tuple:
+        """
+        Returns (filtered_chunks, confidence).
+        confidence: "none" if all filtered out, "low" if partial, "high" if all pass.
+        """
+        scores = self._grade_chunks(query, chunks)
+        passing = [c for c, s in zip(chunks, scores) if s >= self.crag_threshold]
+
+        if not passing:
+            return [], "none"
+        if len(passing) == len(chunks):
+            return passing, "high"
+        return passing, "low"
+
+    # ── Final answer assembly ─────────────────────────────────────────────────
 
     def _build_system_prompt(self) -> str:
         return (
-            "You are an API support assistant. "
-            "You use the provided API documentation context to answer questions about how to use APIs, "
-            "troubleshoot errors, and explain best practices. "
-            "If the context is insufficient, say you are unsure instead of inventing details."
+            "You are a grounded RAG assistant. "
+            "Answer the user's question STRICTLY based on the provided context. "
+            "Do not invent facts not present in the context. "
+            "If the context is insufficient, say so clearly."
         )
 
     def _build_messages(
         self,
         question: str,
         retrieved_chunks: Sequence,
-        conversation: Conversation | None,
+        conversation: Conversation,
     ) -> List[Dict[str, str]]:
-        system_content = self._build_system_prompt()
-        context_text = "\n\n".join(f"[{c.document.title}] {c.content}" for c in retrieved_chunks)
+        context_parts = []
+        for c in retrieved_chunks:
+            meta = c.metadata or {}
+            citation_url = meta.get("citation_url", "")
+            label = meta.get("heading") or c.document.title
+            context_parts.append(f"[{label}]({citation_url})\n{c.content}")
+        context_text = "\n\n---\n\n".join(context_parts) or "[No relevant context found]"
+
         user_prompt = (
-            "Context:\n"
-            f"{context_text or '[No relevant context found]'}\n\n"
-            "User question:\n"
-            f"{question}\n\n"
-            "When answering:\n"
-            "- Reference the relevant APIs from the context.\n"
-            "- If you suggest requests, include example HTTP requests or curl commands.\n"
-            "- If there is not enough information, clearly say that."
+            f"Context:\n{context_text}\n\n"
+            f"Question: {question}\n\n"
+            "Answer strictly from the context above."
         )
 
-        messages: List[Dict[str, str]] = [{"role": "system", "content": system_content}]
-
-        if conversation is not None:
-            for msg in conversation.messages.all():
-                messages.append({"role": msg.role, "content": msg.content})
-
+        messages: List[Dict[str, str]] = [
+            {"role": "system", "content": self._build_system_prompt()}
+        ]
+        for msg in conversation.messages.all():
+            messages.append({"role": msg.role, "content": msg.content})
         messages.append({"role": "user", "content": user_prompt})
         return messages
 
-    def answer(self, question: str, conversation_id: int | None = None, top_k: int = 5) -> RAGResponse:
+    # ── Public entry point ────────────────────────────────────────────────────
+
+    def answer(
+        self,
+        question: str,
+        conversation_id: int | None = None,
+        top_k: int = 5,
+        source_ids: List[int] | None = None,
+    ) -> RAGResponse:
+        # 1. Load or create conversation
         if conversation_id is not None:
             conversation = Conversation.objects.get(pk=conversation_id)
         else:
             conversation = Conversation.objects.create(title=question[:80])
 
-        question_embedding = self.embedding_service.get_embedding(question)
-        chunks = self.vector_store.search(question_embedding, top_k=top_k)
+        history = [
+            {"role": m.role, "content": m.content}
+            for m in conversation.messages.all()
+        ]
 
-        messages = self._build_messages(question, chunks, conversation)
+        # 2. Query rewriting (multi-turn memory)
+        standalone_query = self._rewrite_query(question, history)
+
+        # 3. HyDE: embed hypothetical answer instead of raw query
+        if self.use_hyde:
+            hyde_text = self._hypothetical_answer(standalone_query)
+            query_embedding = self.embedding_service.get_embedding(hyde_text)
+        else:
+            query_embedding = self.embedding_service.get_embedding(standalone_query)
+
+        # 4. Vector search
+        chunks = self.vector_store.search(
+            query_embedding, top_k=top_k, source_ids=source_ids
+        )
+
+        # 5. CRAG grading (batched)
+        confidence = "high"
+        if self.use_crag and chunks:
+            chunks, confidence = self._crag_filter(standalone_query, chunks)
+
+        # 6. Early exit if zero chunks pass CRAG — no fabrication
+        if not chunks:
+            no_answer = "I don't have this information in the indexed sources."
+            Message.objects.create(
+                conversation=conversation, role=Message.ROLE_USER, content=question
+            )
+            Message.objects.create(
+                conversation=conversation, role=Message.ROLE_ASSISTANT, content=no_answer
+            )
+            return RAGResponse(
+                answer=no_answer,
+                sources=[],
+                conversation_id=conversation.id,
+                confidence="none",
+            )
+
+        # 7. Final LLM call with grounded context
+        messages = self._build_messages(standalone_query, chunks, conversation)
         answer_text = self.llm_client.chat(messages)
 
-        Message.objects.create(conversation=conversation, role=Message.ROLE_USER, content=question)
-        Message.objects.create(conversation=conversation, role=Message.ROLE_ASSISTANT, content=answer_text)
+        # 8. Persist conversation messages
+        Message.objects.create(
+            conversation=conversation, role=Message.ROLE_USER, content=question
+        )
+        Message.objects.create(
+            conversation=conversation, role=Message.ROLE_ASSISTANT, content=answer_text
+        )
 
-        sources = [
-            {
+        # 9. Build sources with citation_url from chunk metadata
+        sources = []
+        for c in chunks:
+            meta = c.metadata or {}
+            sources.append({
                 "document_id": c.document_id,
                 "document_title": c.document.title,
                 "chunk_index": c.chunk_index,
                 "snippet": c.content[:300],
-            }
-            for c in chunks
-        ]
+                "citation_url": meta.get("citation_url", ""),
+            })
 
-        return RAGResponse(answer=answer_text, sources=sources, conversation_id=conversation.id)
-
+        return RAGResponse(
+            answer=answer_text,
+            sources=sources,
+            conversation_id=conversation.id,
+            confidence=confidence,
+        )

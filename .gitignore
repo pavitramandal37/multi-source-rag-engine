@@ -1,8 +1,37 @@
+# Python
 __pycache__/
 *.py[cod]
+*.pyo
 *.sqlite3
+*.log
+
+# Environments
+.env
 .venv/
 env/
-.env
-*.log
+venv/
+
+# Django build artifacts
+staticfiles/
+media/
+
+# IDE — VS Code
+.vscode/
+
+# IDE — Cursor
+.cursor/
+
+# IDE — Windsurf
+.windsurfrules
+
+# AI assistant / agent tool data
+.jetro/
+.agents/
+.mcp.json
+CLAUDE.md
+AGENT.md
+
+# OS
+.DS_Store
+Thumbs.db
 

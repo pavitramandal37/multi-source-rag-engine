@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -r \"fetch\\\\|axios\\\\|XMLHttpRequest\\\\|$.ajax\\\\|WebSocket\" ./backend --include=\"*.py\")",
+      "Bash(docker compose *)"
+    ]
+  }
+}

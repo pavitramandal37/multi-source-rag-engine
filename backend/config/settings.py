@@ -95,6 +95,10 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
+STATICFILES_DIRS = [BASE_DIR / "static"]
+
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
@@ -107,6 +111,16 @@ REST_FRAMEWORK = {
 LLM_API_KEY = os.getenv("LLM_API_KEY", "")
 LLM_API_BASE_URL = os.getenv("LLM_API_BASE_URL", "https://api.openai.com/v1")
 LLM_MODEL_NAME = os.getenv("LLM_MODEL_NAME", "gpt-4.1-mini")
-EMBEDDING_MODEL_NAME = os.getenv("EMBEDDING_MODEL_NAME", "text-embedding-3-small")
-EMBEDDING_BACKEND = os.getenv("EMBEDDING_BACKEND", "openai").lower()
+EMBEDDING_MODEL_NAME = os.getenv("EMBEDDING_MODEL_NAME", "nomic-embed-text")
+EMBEDDING_BACKEND = os.getenv("EMBEDDING_BACKEND", "local").lower()
+
+# DB column size — must match VectorField(dimensions=N) in models.py.
+# All local models are padded/truncated to this size by EmbeddingService._adapt_dimension().
+# nomic-embed-text (768) and BAAI/bge-small-en (384) are both padded up to 1536.
+VECTOR_DIMENSIONS = int(os.getenv("VECTOR_DIMENSIONS", "1536"))
+
+RAG_USE_HYDE = os.getenv("RAG_USE_HYDE", "true").lower() == "true"
+RAG_USE_CRAG = os.getenv("RAG_USE_CRAG", "true").lower() == "true"
+RAG_CRAG_THRESHOLD = float(os.getenv("RAG_CRAG_THRESHOLD", "0.6"))
+URL_CRAWL_DEFAULT_DEPTH = int(os.getenv("URL_CRAWL_DEFAULT_DEPTH", "2"))
 

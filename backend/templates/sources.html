@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ app_title }}{% endblock %}
+{% block nav_sources %}active{% endblock %}
+
+{% block content %}
+<div class="sources-layout">
+
+  <section class="sources-table-section">
+    <h1 class="page-title">{{ app_title }}</h1>
+
+    <div id="sources-status" class="status-msg hidden"></div>
+
+    <table class="sources-table" id="sources-table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Origin</th>
+          <th>Docs</th>
+          <th>Added</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="sources-tbody">
+        <tr id="sources-loading-row"><td colspan="6" class="loading-cell">Loading sources…</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="add-source-section">
+    <h2 class="section-title">Add source</h2>
+
+    <div class="tab-bar" role="tablist">
+      <button class="tab-btn active" role="tab" aria-selected="true"  data-tab="url">URL</button>
+      <button class="tab-btn"        role="tab" aria-selected="false" data-tab="pdf">PDF</button>
+      <button class="tab-btn"        role="tab" aria-selected="false" data-tab="md">Markdown</button>
+    </div>
+
+    <!-- URL tab -->
+    <form id="form-url" class="ingest-form tab-panel active" data-tab="url" novalidate>
+      <label class="field-label" for="url-name">Name</label>
+      <input id="url-name" type="text" class="field-input" placeholder="e.g. Pavitra Portfolio" required>
+
+      <label class="field-label" for="url-url">URL</label>
+      <input id="url-url" type="url" class="field-input" placeholder="https://example.com" required>
+
+      <label class="field-label" for="url-depth">Crawl depth: <span id="url-depth-val">2</span></label>
+      <input id="url-depth" type="range" min="0" max="5" value="2" class="field-range"
+             oninput="document.getElementById('url-depth-val').textContent=this.value">
+      <p class="hint">0 = single page only, up to 50 pages total</p>
+
+      <button type="submit" class="submit-btn">Ingest URL</button>
+    </form>
+
+    <!-- PDF tab -->
+    <form id="form-pdf" class="ingest-form tab-panel hidden" data-tab="pdf" novalidate>
+      <label class="field-label" for="pdf-name">Name</label>
+      <input id="pdf-name" type="text" class="field-input" placeholder="e.g. Cisco ISE Guide" required>
+
+      <label class="field-label" for="pdf-file">PDF file</label>
+      <input id="pdf-file" type="file" accept=".pdf" class="field-input" required>
+
+      <button type="submit" class="submit-btn">Upload &amp; Ingest</button>
+    </form>
+
+    <!-- Markdown tab -->
+    <form id="form-md" class="ingest-form tab-panel hidden" data-tab="md" novalidate>
+      <label class="field-label" for="md-name">Name</label>
+      <input id="md-name" type="text" class="field-input" placeholder="e.g. Project README" required>
+
+      <label class="field-label" for="md-file">Markdown file</label>
+      <input id="md-file" type="file" accept=".md" class="field-input" required>
+
+      <button type="submit" class="submit-btn">Upload &amp; Ingest</button>
+    </form>
+
+    <div id="ingest-spinner" class="spinner hidden" aria-label="Processing…"></div>
+    <div id="ingest-result" class="ingest-result hidden"></div>
+  </section>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{% static 'js/sources.js' %}"></script>
+{% endblock %}

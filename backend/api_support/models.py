@@ -2,9 +2,38 @@ from django.db import models
 from pgvector.django import VectorField
 
 
+class Source(models.Model):
+    TYPE_URL = "url"
+    TYPE_PDF = "pdf"
+    TYPE_MARKDOWN = "markdown"
+    TYPE_JSON = "json"
+
+    TYPE_CHOICES = [
+        (TYPE_URL, "URL"),
+        (TYPE_PDF, "PDF"),
+        (TYPE_MARKDOWN, "Markdown"),
+        (TYPE_JSON, "JSON"),
+    ]
+
+    name = models.CharField(max_length=255)
+    type = models.CharField(max_length=16, choices=TYPE_CHOICES)
+    origin = models.CharField(max_length=2048)  # URL or original filename
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self) -> str:
+        return f"{self.name} ({self.type})"
+
+
 class Document(models.Model):
+    source = models.ForeignKey(
+        Source,
+        on_delete=models.CASCADE,
+        related_name="documents",
+        null=True,
+        blank=True,
+    )
     title = models.CharField(max_length=255)
-    source_name = models.CharField(max_length=255, blank=True)
+    source_name = models.CharField(max_length=255, blank=True)  # kept for backwards compat
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self) -> str:
@@ -16,7 +45,7 @@ class DocumentChunk(models.Model):
     chunk_index = models.PositiveIntegerField()
     content = models.TextField()
     metadata = models.JSONField(default=dict, blank=True)
-    embedding = VectorField(dimensions=768)
+    embedding = VectorField(dimensions=1536)
 
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -50,4 +79,3 @@ class Message(models.Model):
 
     class Meta:
         ordering = ["created_at"]
-

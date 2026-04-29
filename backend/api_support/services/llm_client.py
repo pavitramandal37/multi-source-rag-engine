@@ -5,6 +5,10 @@ import requests
 from django.conf import settings
 
 
+class LLMUnavailableError(Exception):
+    """Raised when the LLM backend cannot be reached or returns a server error."""
+
+
 class LLMClient:
     def __init__(
         self,
@@ -29,8 +33,24 @@ class LLMClient:
             "messages": messages,
             "temperature": temperature,
         }
-        response = requests.post(url, json=payload, headers=self._headers(), timeout=180)
-        response.raise_for_status()
+        try:
+            response = requests.post(url, json=payload, headers=self._headers(), timeout=180)
+            response.raise_for_status()
+        except requests.exceptions.ConnectionError:
+            raise LLMUnavailableError(
+                f"Cannot connect to the LLM at {self.base_url}. "
+                "Make sure Ollama is running: run `ollama serve` on your host machine."
+            )
+        except requests.exceptions.Timeout:
+            raise LLMUnavailableError(
+                f"LLM request timed out after 180 s (model: {self.model}). "
+                "The model may still be loading — try again in a moment."
+            )
+        except requests.exceptions.HTTPError as exc:
+            raise LLMUnavailableError(
+                f"LLM returned HTTP {exc.response.status_code} for model '{self.model}'. "
+                "Check that the model is pulled: `ollama pull {self.model}`"
+            ) from exc
         data = response.json()
         return data["choices"][0]["message"]["content"]
 

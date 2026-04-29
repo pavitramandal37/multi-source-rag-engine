@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ app_title }}{% endblock %}
+{% block nav_chat %}active{% endblock %}
+
+{% block content %}
+<div class="chat-layout">
+
+  <aside class="chat-sidebar">
+    <h2 class="sidebar-title">Knowledge base</h2>
+    <select id="source-select" multiple size="8" aria-label="Select knowledge base sources">
+      <option value="" selected>All sources</option>
+      {% for source in sources %}
+        <option value="{{ source.id }}">{{ source.name }} ({{ source.type }})</option>
+      {% empty %}
+        <option disabled>No sources yet — add one on the Sources page</option>
+      {% endfor %}
+    </select>
+    <p class="hint">Hold Ctrl / ⌘ to select multiple</p>
+  </aside>
+
+  <section class="chat-main">
+    <h1 class="chat-title">{{ app_title }}</h1>
+    <div id="message-list" class="message-list" role="log" aria-live="polite" aria-label="Conversation"></div>
+
+    <form id="chat-form" class="chat-input-bar" autocomplete="off">
+      <textarea
+        id="query-input"
+        class="query-input"
+        rows="2"
+        placeholder="Ask a question…"
+        required
+        aria-label="Your question"
+      ></textarea>
+      <button type="submit" class="send-btn" id="send-btn">Send</button>
+    </form>
+  </section>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{% static 'js/chat.js' %}"></script>
+{% endblock %}

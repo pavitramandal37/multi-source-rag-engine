@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Iterable, List
 
-from api_support.models import Document
+from api_support.models import Document, Source
 from api_support.services.embedding import EmbeddingService
 from api_support.services.vector_store import VectorStore
 
@@ -37,18 +37,32 @@ class IngestionService:
 
     def ingest_documents(self, source_name: str, docs: Iterable[dict]) -> List[IngestedDocumentSummary]:
         """
-        docs: iterable of {\"title\": str, \"content\": str}
+        docs: iterable of {"title": str, "content": str}
+        Creates a Source record of type JSON for traceability.
         """
+        source = Source.objects.create(
+            name=source_name,
+            type=Source.TYPE_JSON,
+            origin=source_name,
+        )
         summaries: List[IngestedDocumentSummary] = []
         for doc in docs:
             title = doc.get("title") or source_name
             content = doc.get("content") or ""
-            document = Document.objects.create(title=title, source_name=source_name)
+            document = Document.objects.create(
+                title=title,
+                source=source,
+                source_name=source_name,
+            )
             raw_chunks = self._simple_chunk(content)
             chunk_records = []
             for idx, chunk_text in enumerate(raw_chunks):
                 embedding = self.embedding_service.get_embedding(chunk_text)
-                chunk_records.append((document.id, idx, chunk_text, {"source_name": source_name}, embedding))
+                chunk_records.append((
+                    document.id, idx, chunk_text,
+                    {"source_name": source_name, "citation_url": ""},
+                    embedding,
+                ))
 
             self.vector_store.upsert_chunks(chunk_records)
             summaries.append(IngestedDocumentSummary(document_id=document.id, chunks_created=len(chunk_records)))
